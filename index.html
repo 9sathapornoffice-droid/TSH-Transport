@@ -524,13 +524,13 @@
 
       <!-- Targeting overlay guide -->
       <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
-        <div id="cameraGuideBox" class="w-full h-40 border-2 border-red-500 rounded-xl shadow-[0_0_0_9999px_rgba(15,23,42,0.7)] relative">
-          <div class="absolute top-2 left-2 text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded shadow">
+        <div id="cameraGuideBox" class="w-full max-w-xs h-36 border-2 border-red-500 rounded-xl shadow-[0_0_0_9999px_rgba(15,23,42,0.7)] relative transition-all duration-300">
+          <div id="cameraGuideLabel" class="absolute top-2 left-2 text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded shadow">
             เล็งตัวเลขให้อยู่ในกรอบนี้
           </div>
-          <div class="absolute inset-x-0 top-1/2 h-0.5 bg-red-500/50 animate-pulse"></div>
+          <div id="cameraGuideScanLine" class="absolute inset-x-0 top-1/2 h-0.5 bg-red-500/50 animate-pulse"></div>
         </div>
-        <p class="text-white/90 text-xs mt-4 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700 backdrop-blur">
+        <p id="cameraGuideHint" class="text-white/90 text-xs mt-4 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700 backdrop-blur">
           ถือกล้องให้นิ่งและระวังแสงสะท้อน
         </p>
       </div>
@@ -835,10 +835,45 @@
       activeCameraContext = { type, targetInputId, isDecimal };
 
       const titleEl = document.getElementById('cameraModalTitle');
-      if (titleEl) {
-        if (type === 'fuelPhoto') titleEl.textContent = 'ถ่ายรูปบิลน้ำมัน';
-        else if (type === 'returnPhoto') titleEl.textContent = 'ถ่ายรูปไมล์ขากลับ';
-        else titleEl.textContent = 'ถ่ายรูปไมล์ขาไป';
+      const guideBox = document.getElementById('cameraGuideBox');
+      const guideLabel = document.getElementById('cameraGuideLabel');
+      const guideHint = document.getElementById('cameraGuideHint');
+      const scanLine = document.getElementById('cameraGuideScanLine');
+
+      if (type === 'fuelPhoto') {
+        if (titleEl) titleEl.textContent = 'ถ่ายรูปบิลน้ำมัน / สลิปน้ำมัน';
+        if (guideBox) {
+          // ทรงแนวตั้ง (Vertical Receipt Aspect Ratio) เหมาะสำหรับใบเสร็จน้ำมัน
+          guideBox.className = 'w-64 max-w-[82vw] h-[58vh] max-h-[430px] border-2 border-dashed border-amber-400 rounded-2xl shadow-[0_0_0_9999px_rgba(15,23,42,0.75)] relative transition-all duration-300';
+        }
+        if (guideLabel) {
+          guideLabel.textContent = 'จัดวางบิลน้ำมันแนวตั้งให้อยู่ในกรอบนี้';
+          guideLabel.className = 'absolute top-2 left-2 text-[10px] font-bold text-slate-900 bg-amber-400 px-2 py-0.5 rounded shadow';
+        }
+        if (scanLine) {
+          scanLine.className = 'absolute inset-x-0 top-1/2 h-0.5 bg-amber-400/60 animate-pulse';
+        }
+        if (guideHint) {
+          guideHint.textContent = 'วางบิลบนพื้นราบ ถือกล้องขนานกับบิล เปิดไฟฉายหากมืด';
+        }
+      } else {
+        if (titleEl) {
+          titleEl.textContent = type === 'returnPhoto' ? 'ถ่ายรูปไมล์ขากลับ' : 'ถ่ายรูปไมล์ขาไป';
+        }
+        if (guideBox) {
+          // ทรงแนวนอน (Horizontal Cluster Aspect Ratio) เหมาะสำหรับแผงหน้าปัดไมล์รถ
+          guideBox.className = 'w-full max-w-xs h-36 border-2 border-red-500 rounded-xl shadow-[0_0_0_9999px_rgba(15,23,42,0.7)] relative transition-all duration-300';
+        }
+        if (guideLabel) {
+          guideLabel.textContent = 'เล็งตัวเลขไมล์ให้อยู่ในกรอบนี้';
+          guideLabel.className = 'absolute top-2 left-2 text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded shadow';
+        }
+        if (scanLine) {
+          scanLine.className = 'absolute inset-x-0 top-1/2 h-0.5 bg-red-500/50 animate-pulse';
+        }
+        if (guideHint) {
+          guideHint.textContent = 'ถือกล้องให้นิ่งและระวังแสงสะท้อนบนหน้าปัด';
+        }
       }
 
       const modal = document.getElementById('modalCamera');
@@ -1037,6 +1072,9 @@
     }
 
     function compressAndPrepareImage(base64Str, isReceipt = false, maxWidth = 1000) {
+      if (isReceipt && maxWidth < 1300) {
+        maxWidth = 1300;
+      }
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
@@ -1124,12 +1162,21 @@
           }
         });
 
-        // กำหนด Whitelist รวมช่องว่าง (Space) เพื่อให้อ่านตัวเลขไมล์ลูกกลิ้งที่เว้นระยะได้แม่นยำ
-        // ใช้ PSM 6 (Single Uniform Block) เหมาะสำหรับแถวตัวเลขไมล์
-        await worker.setParameters({
-          tessedit_char_whitelist: isDecimal ? '0123456789., ' : '0123456789 ',
-          tessedit_pageseg_mode: '6'
-        });
+        if (isDecimal) {
+          // สำหรับบิลน้ำมัน: รองรับตัวเลข จุดทศนิยม และตัวอักษรเพื่อจับคำว่า TOTAL / NET / BAHT / CASH
+          // ใช้ PSM 4 (คอลัมน์เดี่ยวที่มีขนาดข้อความหลากหลาย เหมาะกับใบเสร็จ)
+          await worker.setParameters({
+            tessedit_char_whitelist: '0123456789., ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+            tessedit_pageseg_mode: '4'
+          });
+        } else {
+          // สำหรับเลขไมล์รถ: กำหนด Whitelist รวมช่องว่าง (Space) สำหรับไมล์ลูกกลิ้ง Isuzu
+          // ใช้ PSM 6 (Single Uniform Block) เหมาะสำหรับแถวตัวเลขไมล์
+          await worker.setParameters({
+            tessedit_char_whitelist: '0123456789 ',
+            tessedit_pageseg_mode: '6'
+          });
+        }
 
         let result = await worker.recognize(base64);
         let recognizedText = result.data.text || '';
@@ -1177,13 +1224,64 @@
     function extractNumberFromText(text, isDecimal = false) {
       if (!text) return null;
 
-      // 1. กรณีเป็นค่าน้ำมัน (ทศนิยม)
+      // 1. กรณีเป็นค่าน้ำมัน (บิล / สลิปน้ำมัน):
       if (isDecimal) {
+        const lines = text.split(/[\r\n]+/);
+        let bestCandidate = null;
+
+        // คำค้นหาสำคัญบนบิลน้ำมัน (Total, Net, Amount, Baht, Cash, Paid, รวม, ยอดรวม, สุทธิ, บาท, ยอดเงิน)
+        const totalKeywords = /TOTAL|NET|AMOUNT|BAHT|CASH|PAID|DUE|รวม|ยอดรวม|สุทธิ|บาท|ยอดเงิน/i;
+
+        // ขั้นที่ 1: ค้นหาตัวเลขในบรรทัดที่มีคีย์เวิร์ด Total หรือ ยอดรวม ก่อน
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (totalKeywords.test(line)) {
+            const cleanLine = line.replace(/,/g, '');
+            const lineMatches = cleanLine.match(/\d+(?:\.\d{1,2})?/g) || [];
+            const nums = lineMatches.map(Number).filter(n => n >= 50 && n <= 30000);
+            if (nums.length > 0) {
+              bestCandidate = Math.max(...nums);
+              break;
+            }
+          }
+        }
+
+        if (bestCandidate !== null) {
+          return bestCandidate;
+        }
+
+        // ขั้นที่ 2: หากไม่พบบรรทัดคีย์เวิร์ด ให้หาตัวเลขทั้งหมดในเอกสาร
         const cleanText = text.replace(/,/g, '');
-        const matches = cleanText.match(/\d+(?:\.\d{1,2})?/g);
-        if (!matches || matches.length === 0) return null;
-        const validNumbers = matches.map(Number).filter(n => n > 0 && n < 50000);
-        return validNumbers.length > 0 ? validNumbers[validNumbers.length - 1] : null;
+        const matches = cleanText.match(/\d+(?:\.\d{1,2})?/g) || [];
+        if (matches.length === 0) return null;
+
+        // กรองเฉพาะตัวเลขที่เป็นยอดเงินสมเหตุสมผล (50 ถึง 30,000 บาท)
+        // ตัดเลขปี พ.ศ. (2560-2575) และ ค.ศ. (2020-2030)
+        const candidates = matches.map(Number).filter(n => {
+          if (n < 50 || n > 30000) return false;
+          if (n >= 2560 && n <= 2575) return false;
+          if (n >= 2020 && n <= 2030) return false;
+          return true;
+        });
+
+        if (candidates.length === 0) return null;
+
+        // บิลน้ำมันมักมีทศนิยม 2 ตำแหน่ง (.00, .50) ให้ความสำคัญก่อน
+        const decimalCandidates = cleanText.match(/\d+\.\d{2}/g) || [];
+        const validDecimals = decimalCandidates.map(Number).filter(n => {
+          if (n < 50 || n > 30000) return false;
+          if (n >= 2560 && n <= 2575) return false;
+          if (n >= 2020 && n <= 2030) return false;
+          return true;
+        });
+
+        if (validDecimals.length > 0) {
+          // ยอดรวมบิลน้ำมันมักเป็นยอดที่สูงที่สุดในบรรดารายการตัวเลขเงินในบิล
+          return Math.max(...validDecimals);
+        }
+
+        // กรณีเป็นตัวเลขกลมๆ เช่น เติม 500, 1000, 1500 บาท
+        return Math.max(...candidates);
       }
 
       // 2. กรณีเป็นเลขไมล์รถ (Odometer):
