@@ -9,9 +9,9 @@
   "description": "ระบบบันทึกการเดินทาง บริษัท อีซูซุตั้งเซียฮวดนครปฐม",
   "icons": [
     {
-      "src": "tsh-mascot.jpg",
+      "src": "tsh-mascot.png",
       "sizes": "192x192 512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

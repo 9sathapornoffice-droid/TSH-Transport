@@ -1,10 +1,10 @@
 // Service Worker for TSH Transport PWA (Network-First)
-const CACHE_NAME = 'tsh-transport-v2';
+const CACHE_NAME = 'tsh-transport-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './tsh-mascot.jpg'
+  './tsh-mascot.png'
 ];
 
 self.addEventListener('install', (e) => {
