@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>บันทึกการเดินทาง</title>
+  <meta name="theme-color" content="#1e3a8a">
+  <link rel="icon" type="image/jpeg" href="tsh-mascot.jpg">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Tesseract.js CDN (OCR Engine) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'sans-serif'],
+          },
+          colors: {
+            theme: {
+              navy: '#1e3a8a',
+              navyDark: '#0f172a',
+              navyLight: '#eff6ff',
+              red: '#dc2626',
+              redHover: '#b91c1c',
+              redLight: '#fef2f2',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+    .scanner-active {
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.4);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-red-600 selection:text-white pb-14">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md border-b-2 border-red-600">
+    <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-10 h-10 rounded-xl overflow-hidden bg-white p-0.5 border border-slate-700 shadow-inner shrink-0 flex items-center justify-center">
+          <img src="tsh-mascot.jpg" alt="TSH" class="w-full h-full object-contain" onerror="this.src='https://placehold.co/80x80/1e3a8a/ffffff?text=TSH'">
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white px-1.5 py-0.2 rounded">TSH</span>
+            <span class="text-xs text-slate-300 font-medium">อีซูซุตั้งเซียฮวดนครปฐม</span>
+          </div>
+          <h1 class="text-base font-bold leading-tight text-white mt-0.5">บันทึกการเดินทาง</h1>
+        </div>
+      </div>
+      <button onclick="openSettingsModal()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 transition border border-slate-700" title="ตั้งค่าเชื่อมต่อ Google Sheets">
+        <i data-lucide="settings" class="w-5 h-5"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= IN-APP BROWSER ALERT BANNER ================= -->
+  <div id="inAppBanner" class="hidden bg-amber-500 text-slate-950 px-4 py-2 text-xs font-medium border-b border-amber-600 shadow-sm transition-all">
+    <div class="max-w-md mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center space-x-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 text-slate-950"></i>
+        <span id="inAppBannerText">เปิดผ่านแอป LINE: กรุณากด 3 จุดมุมบนขวา แล้วเลือก "เปิดด้วยเบราว์เซอร์อื่น"</span>
+      </div>
+      <button onclick="document.getElementById('inAppBanner').classList.add('hidden')" class="p-1 text-slate-900 hover:text-black">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= NOTIFICATION TOAST ================= -->
+  <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm hidden transition-all duration-300 transform -translate-y-2 opacity-0">
+    <div id="toastContent" class="p-3.5 rounded-xl shadow-lg border text-xs font-medium flex items-center space-x-2.5">
+      <span id="toastIcon"></span>
+      <span id="toastMessage" class="flex-1"></span>
+    </div>
+  </div>
+
+  <!-- ================= OCR SCANNING OVERLAY ================= -->
+  <div id="ocrLoadingOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex flex-col items-center justify-center p-6 text-white text-center">
+    <div class="bg-slate-800/95 border border-red-500/40 p-6 rounded-2xl max-w-xs w-full shadow-2xl space-y-4">
+      <div class="w-14 h-14 mx-auto bg-red-600/20 text-red-400 rounded-2xl flex items-center justify-center border border-red-500/30">
+        <i data-lucide="scan-line" class="w-7 h-7 animate-bounce text-red-400"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-base text-white">AI กำลังสแกนตัวเลข...</h3>
+        <p class="text-xs text-slate-300 mt-1" id="ocrStatusText">วิเคราะห์รูปภาพด้วย Tesseract.js</p>
+      </div>
+      <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+        <div id="ocrProgressBar" class="bg-red-500 h-full w-0 transition-all duration-200"></div>
+      </div>
+      <p class="text-[11px] text-slate-400">ระบบจะกรอกตัวเลขอัตโนมัติ (แก้ไขด้วยมือได้ตลอดเวลา)</p>
+    </div>
+  </div>
+
+  <!-- ================= MAIN CONTAINER ================= -->
+  <main class="flex-1 max-w-md w-full mx-auto px-4 py-4 space-y-4">
+
+    <!-- ================= VIEW 1: HOME ================= -->
+    <section id="viewHome" class="space-y-4">
+
+      <div id="employeeBar" class="bg-blue-50/80 border border-blue-200 rounded-xl p-3.5 shadow-sm flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-700 flex items-center justify-center shrink-0">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+          </div>
+          <div class="text-xs">
+            <span class="text-slate-500 text-[11px] block">ข้อมูลพนักงาน (จดจำอัตโนมัติ):</span>
+            <span id="prefSummary" class="font-semibold text-blue-900 text-xs">ยังไม่ได้ตั้งค่าข้อมูลพนักงาน</span>
+          </div>
+        </div>
+        <button onclick="clearUserPreferences()" class="text-[11px] font-medium text-slate-400 hover:text-red-600 transition underline pl-2">
+          รีเซ็ต
+        </button>
+      </div>
+
+      <button onclick="goToNewTripView()" class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white p-3.5 rounded-xl shadow-md shadow-red-600/20 font-semibold text-base flex items-center justify-center space-x-2 transition-all">
+        <i data-lucide="plus-circle" class="w-5 h-5 text-red-100"></i>
+        <span>+ เริ่มเดินทางใหม่ (ขาไป)</span>
+      </button>
+
+      <div id="activeTripContainer" class="hidden space-y-2">
+        <div class="flex items-center justify-between text-xs px-1">
+          <span class="font-bold text-slate-700 flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping"></span>
+            ทริปที่กำลังเดินทาง
+          </span>
+          <span class="text-blue-800 font-semibold bg-blue-100 px-2.5 py-0.5 rounded-md border border-blue-200">
+            1 ทริปค้างอยู่
+          </span>
+        </div>
+
+        <div class="bg-white border-2 border-blue-500 rounded-xl p-4 shadow-sm space-y-3 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 to-red-600"></div>
+
+          <div class="flex items-start justify-between gap-2 pt-0.5">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span id="activeCardTripId" class="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  TRIP-XXXX
+                </span>
+                <span id="activeCardDate" class="text-[11px] text-slate-500"></span>
+              </div>
+              <h3 id="activeCardDestination" class="font-bold text-slate-800 text-sm mt-1.5 flex items-center gap-1.5">
+                <i data-lucide="map-pin" class="w-4 h-4 text-red-500 shrink-0"></i>
+                <span>-</span>
+              </h3>
+            </div>
+            <span class="inline-flex items-center text-[11px] font-semibold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+              กำลังเดินทาง
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <div>
+              <span class="text-slate-500 block text-[10px]">พนักงาน:</span>
+              <span id="activeCardDriver" class="font-semibold text-slate-800"></span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px]">ทะเบียนรถ:</span>
+              <span id="activeCardPlate" class="font-semibold text-slate-800"></span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px]">เลขไมล์ขาไป:</span>
+              <span id="activeCardStartOdo" class="font-bold text-blue-700 font-mono"></span> กม.
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px]">เวลาออกเดินทาง:</span>
+              <span id="activeCardDepartTime" class="font-semibold text-slate-700"></span> น.
+            </div>
+          </div>
+
+          <button onclick="resumeActiveTrip()" class="w-full bg-blue-700 hover:bg-blue-800 active:scale-[0.98] text-white py-3 px-4 rounded-xl font-semibold text-sm shadow-md flex items-center justify-center space-x-2 transition-all">
+            <i data-lucide="corner-down-left" class="w-4 h-4"></i>
+            <span>ดำเนินการต่อ / บันทึกขากลับ (ปิดทริป)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center space-x-2 pb-2 border-b border-slate-100">
+          <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+          </div>
+          <h4 class="font-bold text-slate-800 text-sm">ข้อมูลระบบและการรักษาความปลอดภัย</h4>
+        </div>
+
+        <ul class="space-y-2 text-xs">
+          <li class="flex items-start space-x-2">
+            <div class="w-4 h-4 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
+              <i data-lucide="check" class="w-3 h-3 font-bold"></i>
+            </div>
+            <span class="text-slate-600">
+              <strong class="text-slate-800">Data Lock & Admin Mode:</strong> ข้อมูลขาไปถูกล็อกอัตโนมัติเมื่อถึงขากลับ ปลดล็อกได้ด้วยรหัส Admin
+            </span>
+          </li>
+          <li class="flex items-start space-x-2">
+            <div class="w-4 h-4 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+              <i data-lucide="check" class="w-3 h-3 font-bold"></i>
+            </div>
+            <span class="text-slate-600">
+              <strong class="text-slate-800">Smart History Auto-fill:</strong> บันทึกประวัติสถานที่ปลายทาง แตะเพื่อเลือกได้ทันทีโดยไม่ต้องพิมพ์ซ้ำ
+            </span>
+          </li>
+          <li class="flex items-start space-x-2">
+            <div class="w-4 h-4 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+              <i data-lucide="check" class="w-3 h-3 font-bold"></i>
+            </div>
+            <span class="text-slate-600">
+              <strong class="text-slate-800">Single Record per Trip:</strong> 1 ทริป = 1 บรรทัด ไม่แยกแถว ข้อมูลซิงก์ตรงสู่ Google Sheets
+            </span>
+          </li>
+        </ul>
+      </div>
+
+    </section>
+
+    <!-- ================= VIEW 2: NEW TRIP (ขาไป) ================= -->
+    <section id="viewNewTrip" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <button onclick="goToHomeView()" class="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          กลับหน้าหลัก
+        </button>
+        <span class="text-xs font-mono font-bold bg-blue-100 text-blue-900 px-2.5 py-1 rounded-lg border border-blue-300" id="displayNewTripId"></span>
+      </div>
+
+      <form id="newTripForm" onsubmit="handleSaveStartTrip(event)" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4">
+        <div class="border-b border-slate-100 pb-2">
+          <h2 class="text-base font-bold text-slate-800">Step 1: บันทึกข้อมูลออกเดินทาง (ขาไป)</h2>
+          <p class="text-xs text-slate-500">ข้อมูลชื่อและทะเบียนรถดึงจากประวัติเดิมมาให้อัตโนมัติ</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">วันที่เดินทาง <span class="text-red-500">*</span></label>
+            <input type="date" id="inputTravelDate" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">เวลาออกเดินทาง <span class="text-red-500">*</span></label>
+            <input type="time" id="inputDepartTime" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อพนักงานผู้เดินทาง <span class="text-red-500">*</span></label>
+          <input type="text" id="inputEmployeeName" placeholder="เช่น นายสมชาย ใจดี" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">แผนก / ฝ่าย <span class="text-red-500">*</span></label>
+            <input type="text" id="inputDepartment" placeholder="เช่น ฝ่ายบริการ/อะไหล่" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">ทะเบียนรถ <span class="text-red-500">*</span></label>
+            <input type="text" id="inputVehiclePlate" placeholder="เช่น 1กข-9999 นฐ." required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 outline-none">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-medium text-slate-600">สถานที่ปลายทาง / วัตถุประสงค์ <span class="text-red-500">*</span></label>
+            <span class="text-[10px] text-blue-600 font-medium">แตะเพื่อเลือกจากประวัติเดิม</span>
+          </div>
+          <div class="relative">
+            <input type="text" id="inputDestination" list="destinationList" placeholder="พิมพ์หรือแตะเลือกจากรายการประวัติ..." required autocomplete="off" class="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 outline-none">
+            <span class="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none">
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </span>
+          </div>
+          <datalist id="destinationList"></datalist>
+        </div>
+
+        <div class="space-y-2.5 bg-blue-50/70 p-3.5 rounded-xl border border-blue-200">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+              <i data-lucide="gauge" class="w-4 h-4 text-blue-700"></i>
+              เลขไมล์ขาไป (พร้อมกล้องสแกนตัวเลขอัตโนมัติ) <span class="text-red-500">*</span>
+            </label>
+            <span class="text-[10px] text-blue-700 font-semibold bg-blue-100 px-2 py-0.5 rounded-full">AI OCR</span>
+          </div>
+
+          <label class="w-full cursor-pointer bg-white hover:bg-blue-100 border-2 border-dashed border-blue-500 text-blue-800 py-3 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs font-bold shadow-sm transition active:scale-[0.99]">
+            <i data-lucide="image-plus" class="w-5 h-5 text-blue-600"></i>
+            <span id="labelStartPhoto">📷 ถ่ายรูป หรือ เลือกภาพไมล์ขาไป (Auto OCR)</span>
+            <input type="file" id="fileStartPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'startPhoto', 'inputStartOdo', false)">
+          </label>
+
+          <div id="previewBoxStartPhoto" class="hidden relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100 h-36">
+            <img id="imgPreviewStartPhoto" src="" alt="Start Odo" class="w-full h-full object-contain bg-slate-900">
+            <button type="button" onclick="removeImage('startPhoto')" class="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full shadow hover:bg-red-700">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+            <span class="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur">
+              บีบอัด Canvas + สแกน OCR แล้ว
+            </span>
+          </div>
+
+          <div>
+            <div class="relative">
+              <input type="number" id="inputStartOdo" min="0" step="1" placeholder="ตัวเลขจะขึ้นที่นี่ หรือพิมพ์แก้ไขเองได้" required class="w-full pl-3 pr-12 py-2.5 bg-white border-2 border-blue-400 rounded-lg text-base font-bold text-slate-900 focus:border-blue-600 outline-none">
+              <span class="absolute right-3 top-2.5 text-xs text-slate-400">กม.</span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+              <i data-lucide="edit-2" class="w-3 h-3 text-blue-600"></i>
+              แตะที่ช่องเพื่อแก้ไขตัวเลขได้ทันที หากภาพถ่ายมีแสงสะท้อน
+            </p>
+          </div>
+        </div>
+
+        <button type="submit" id="btnSubmitStart" class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.98] disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold text-sm shadow-md flex items-center justify-center space-x-2 transition-all">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span id="btnSubmitStartText">บันทึกออกเดินทาง (สถานะ: กำลังเดินทาง)</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- ================= VIEW 3: RETURN TRIP (ขากลับ / เติมน้ำมัน / ปิดทริป) ================= -->
+    <section id="viewReturnTrip" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <button onclick="goToHomeView()" class="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          กลับหน้าหลัก
+        </button>
+        <span class="text-xs font-mono font-bold bg-blue-100 text-blue-900 px-2.5 py-1 rounded-lg border border-blue-300" id="displayReturnTripId"></span>
+      </div>
+
+      <div class="bg-slate-100 rounded-xl p-3.5 border border-slate-300 text-xs space-y-2.5">
+        <div class="flex items-center justify-between border-b border-slate-300 pb-2">
+          <div class="flex items-center space-x-1.5">
+            <span id="lockStatusIcon" class="p-1 bg-slate-200 text-slate-700 rounded-md">
+              <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+            </span>
+            <span class="font-bold text-slate-700 text-xs">ข้อมูลขาไป (ล็อกห้ามแก้ไข)</span>
+          </div>
+
+          <button type="button" onclick="promptAdminUnlock()" id="btnAdminUnlock" class="inline-flex items-center gap-1 bg-white hover:bg-red-50 text-slate-700 hover:text-red-700 px-2.5 py-1 rounded-lg border border-slate-300 text-[11px] font-semibold transition shadow-sm">
+            <i data-lucide="key" class="w-3.5 h-3.5 text-red-600"></i>
+            <span>Admin</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <label class="block text-[10px] text-slate-500 mb-0.5">ผู้เดินทาง:</label>
+            <input type="text" id="roDriver" disabled class="w-full px-2 py-1.5 bg-slate-200/90 text-slate-800 rounded border border-slate-300 text-xs font-medium disabled:cursor-not-allowed">
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-500 mb-0.5">ทะเบียนรถ:</label>
+            <input type="text" id="roPlate" disabled class="w-full px-2 py-1.5 bg-slate-200/90 text-slate-800 rounded border border-slate-300 text-xs font-medium disabled:cursor-not-allowed">
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-500 mb-0.5">วันที่เดินทาง:</label>
+            <input type="date" id="roDate" disabled class="w-full px-2 py-1.5 bg-slate-200/90 text-slate-800 rounded border border-slate-300 text-xs disabled:cursor-not-allowed">
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-500 mb-0.5">เวลาออกเดินทาง:</label>
+            <input type="time" id="roDepartTime" disabled class="w-full px-2 py-1.5 bg-slate-200/90 text-slate-800 rounded border border-slate-300 text-xs disabled:cursor-not-allowed">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-[10px] text-slate-500 mb-0.5">สถานที่ปลายทาง:</label>
+            <input type="text" id="roDestination" list="destinationList" disabled class="w-full px-2 py-1.5 bg-slate-200/90 text-slate-800 rounded border border-slate-300 text-xs font-medium disabled:cursor-not-allowed">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-[10px] text-slate-500 mb-0.5">เลขไมล์ขาไป (กม.):</label>
+            <input type="number" id="roStartOdo" min="0" step="1" disabled oninput="validateReturnOdoLive()" class="w-full px-2 py-1.5 bg-slate-200/90 text-blue-900 rounded border border-slate-300 text-xs font-bold font-mono disabled:cursor-not-allowed">
+          </div>
+        </div>
+
+        <p id="adminUnlockNote" class="text-[10px] text-slate-400 italic">
+          * หากพนักงานคีย์ข้อมูลขาไปผิด ให้กดปุ่ม [Admin] เพื่อใส่รหัสผ่านปลดล็อก
+        </p>
+      </div>
+
+      <form id="returnTripForm" onsubmit="handleFinalSubmit(event)" class="bg-white rounded-xl shadow-sm border-2 border-red-500 p-4 space-y-4">
+        <div class="border-b border-slate-100 pb-2">
+          <h2 class="text-base font-bold text-slate-800">Step 2: บันทึกข้อมูลขากลับ (ปิดทริป)</h2>
+          <p class="text-xs text-slate-500">กรอกเลขไมล์ขากลับเพื่อเปลี่ยนสถานะเป็น "เสร็จสิ้น" และส่งข้อมูลขึ้น Google Sheets</p>
+        </div>
+
+        <div class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-blue-900 flex items-center gap-1">
+              <i data-lucide="fuel" class="w-4 h-4 text-red-600"></i>
+              ค่าน้ำมันระหว่างทริป (ถ้ามี)
+            </label>
+            <span class="text-[10px] text-blue-700 font-semibold bg-blue-100 px-2 py-0.5 rounded-full">OCR สแกนบิล</span>
+          </div>
+
+          <label class="w-full cursor-pointer bg-white hover:bg-blue-100 border border-dashed border-blue-400 text-blue-900 py-2.5 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs font-bold shadow-sm transition active:scale-[0.99]">
+            <i data-lucide="image-plus" class="w-4 h-4 text-red-600"></i>
+            <span id="labelFuelPhoto">📷 ถ่ายรูป หรือ เลือกบิลน้ำมันจากอัลบั้ม (Auto OCR)</span>
+            <input type="file" id="fileFuelPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'fuelPhoto', 'inputFuelCost', true)">
+          </label>
+
+          <div id="previewBoxFuelPhoto" class="hidden relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100 h-32">
+            <img id="imgPreviewFuelPhoto" src="" alt="Fuel Receipt" class="w-full h-full object-contain bg-slate-900">
+            <button type="button" onclick="removeImage('fuelPhoto')" class="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full shadow hover:bg-red-700">
+              <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+          </div>
+
+          <div class="relative">
+            <input type="number" id="inputFuelCost" min="0" step="0.01" placeholder="0.00 (แก้ไขด้วยมือได้ตลอดเวลา)" class="w-full pl-3 pr-12 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800 focus:border-red-500 outline-none">
+            <span class="absolute right-3 top-2 text-xs text-slate-400">บาท</span>
+          </div>
+        </div>
+
+        <div class="space-y-2.5 bg-red-50/70 p-3.5 rounded-xl border border-red-300">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-red-950 flex items-center gap-1">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-red-600"></i>
+              เลขไมล์ขากลับ (กม.) <span class="text-red-600">*</span>
+            </label>
+            <span class="text-[10px] text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-full">AI Auto-OCR</span>
+          </div>
+
+          <label class="w-full cursor-pointer bg-white hover:bg-red-100 border-2 border-dashed border-red-400 text-red-800 py-3 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs font-bold shadow-sm transition active:scale-[0.99]">
+            <i data-lucide="image-plus" class="w-5 h-5 text-red-600"></i>
+            <span id="labelReturnPhoto">📷 ถ่ายรูป หรือ เลือกภาพไมล์ขากลับ (Auto OCR)</span>
+            <input type="file" id="fileReturnPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'returnPhoto', 'inputReturnOdo', false)">
+          </label>
+
+          <div id="previewBoxReturnPhoto" class="hidden relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100 h-36">
+            <img id="imgPreviewReturnPhoto" src="" alt="Return Odo" class="w-full h-full object-contain bg-slate-900">
+            <button type="button" onclick="removeImage('returnPhoto')" class="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full shadow hover:bg-red-700">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+            <span class="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur">
+              บีบอัด Canvas + สแกน OCR แล้ว
+            </span>
+          </div>
+
+          <div class="relative">
+            <input type="number" id="inputReturnOdo" min="0" step="1" placeholder="ตัวเลขจะขึ้นที่นี่ หรือพิมพ์แก้ไขเองได้" required oninput="validateReturnOdoLive()" class="w-full pl-3 pr-12 py-2.5 bg-white border-2 border-red-400 rounded-lg text-base font-bold text-red-950 focus:border-red-600 outline-none">
+            <span class="absolute right-3 top-2.5 text-xs text-slate-400">กม.</span>
+          </div>
+          <p id="liveOdoHint" class="text-[11px] font-semibold text-slate-500"></p>
+
+          <div class="pt-1">
+            <label class="block text-xs font-medium text-slate-700 mb-1">
+              เวลาเดินทางกลับถึง <span class="text-red-500">*</span>
+            </label>
+            <input type="time" id="inputReturnTime" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:border-blue-600 outline-none">
+          </div>
+        </div>
+
+        <div id="finalSummaryBox" class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
+          <div class="flex justify-between">
+            <span class="text-slate-500">ระยะทางรวมทั้งทริป:</span>
+            <span id="summaryTotalDistance" class="font-bold text-blue-900 text-sm">0 กม.</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">สถานะหลังบันทึก:</span>
+            <span class="font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded text-[11px]">เสร็จสิ้น (คำนวณอัตโนมัติ)</span>
+          </div>
+        </div>
+
+        <button type="submit" id="btnSubmitFinal" class="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold text-sm shadow-md border-b-2 border-red-600 flex items-center justify-center space-x-2 transition-all">
+          <i data-lucide="cloud-upload" class="w-4 h-4 text-red-400"></i>
+          <span id="btnSubmitFinalText">จบการเดินทางและส่งข้อมูลขึ้น Google Sheets</span>
+        </button>
+      </form>
+    </section>
+
+  </main>
+
+  <!-- ================= MODAL: SETTINGS ================= -->
+  <div id="modalSettings" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-sm w-full p-5 space-y-4 shadow-xl border border-slate-100">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-base flex items-center gap-1.5">
+          <i data-lucide="link" class="w-4 h-4 text-blue-600"></i>
+          ตั้งค่า Web App URL
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <label class="block font-medium text-slate-700">Google Apps Script URL (exec URL):</label>
+        <textarea id="settingScriptUrl" rows="3" placeholder="https://script.google.com/macros/s/.../exec" class="w-full p-2.5 border border-slate-200 rounded-lg font-mono text-[11px] text-slate-800 focus:border-blue-600 outline-none"></textarea>
+        <p class="text-[10px] text-slate-400">
+          นำ Web App URL ที่ Deploy จาก Code.gs มาใส่ที่นี่ (หากใส่ค่าไว้ในโค้ด DEFAULT_SCRIPT_URL แล้ว พนักงานสแกน QR Code ใช้งานได้ทันทีไม่ต้องตั้งค่าเอง)
+        </p>
+      </div>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="saveSettings()" class="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-lg text-xs shadow-sm transition">
+          บันทึกการตั้งค่า
+        </button>
+        <button onclick="closeSettingsModal()" class="px-4 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-xs hover:bg-slate-50 transition">
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // =========================================================================
+    // ใส่ลิงก์ Google Apps Script Web App URL (ลงท้ายด้วย /exec) ตรงนี้
+    // เพื่อให้พนักงานสแกน QR Code แล้วใช้งานส่งข้อมูลได้ทันทีโดยไม่ต้องกดตั้งค่าเอง
+    // =========================================================================
+    const DEFAULT_SCRIPT_URL = '';
+
+    const KEY_ACTIVE_TRIP = 'TRANSPORT_ACTIVE_TRIP';
+    const KEY_PREFS = 'TRANSPORT_USER_PREFS';
+    const KEY_SCRIPT_URL = 'TRANSPORT_SCRIPT_URL';
+    const KEY_DEST_HISTORY = 'TRANSPORT_DEST_HISTORY';
+
+    const ADMIN_PASSWORD = 'admin1234';
+
+    let activeTrip = null;
+    let isAdminUnlocked = false;
+    let toastTimer = null;
+    let toastHideTimer = null;
+    let imagesState = {
+      startPhoto: null,
+      fuelPhoto: null,
+      returnPhoto: null
+    };
+
+    // ล้าง Service Worker เก่าออกอัตโนมัติ (สำหรับเครื่องที่เคยเปิดเวอร์ชัน PWA ก่อนหน้า)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      }).catch(() => {});
+    }
+
+    function checkInAppBrowser() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+      const isLine = /Line\//i.test(ua);
+      const isFacebook = /FBAV|FBAN|FB_IAB/i.test(ua);
+      const isInstagram = /Instagram/i.test(ua);
+      const isMessenger = /Messenger/i.test(ua);
+      const isWeChat = /MicroMessenger/i.test(ua);
+
+      if (isLine || isFacebook || isInstagram || isMessenger || isWeChat) {
+        const appName = isLine ? 'LINE' : (isFacebook ? 'Facebook' : (isInstagram ? 'Instagram' : (isMessenger ? 'Messenger' : 'In-App Webview')));
+        return { inApp: true, appName };
+      }
+      return { inApp: false, appName: '' };
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const inAppInfo = checkInAppBrowser();
+      if (inAppInfo.inApp) {
+        const banner = document.getElementById('inAppBanner');
+        const text = document.getElementById('inAppBannerText');
+        if (banner && text) {
+          text.textContent = `เปิดผ่านแอป ${inAppInfo.appName}: กรุณากด 3 จุดมุมบนขวา แล้วเลือก "เปิดด้วยเบราว์เซอร์อื่น" เพื่อใช้งานกล้องได้เต็มที่`;
+          banner.classList.remove('hidden');
+        }
+      }
+
+      loadDestinationHistory();
+      loadActiveTripFromStorage();
+      renderHomeView();
+      lucide.createIcons();
+    });
+
+    function getScriptUrl() {
+      return (localStorage.getItem(KEY_SCRIPT_URL) || DEFAULT_SCRIPT_URL || '').trim();
+    }
+
+    function loadDestinationHistory() {
+      const defaultHistory = [
+        'โรงงานสุพรรณบุรี (ตรวจเช็คเครื่องจักร)',
+        'นิคมอุตสาหกรรมบางปู (พบลูกค้า)',
+        'ศูนย์บริการนครปฐม',
+        'สำนักงานใหญ่ กทม. (ส่งเอกสาร)',
+        'ไซต์งานก่อสร้าง อ.กำแพงแสน',
+        'ศูนย์กระจายสินค้า พุทธมณฑล'
+      ];
+
+      let history = [];
+      try {
+        const stored = localStorage.getItem(KEY_DEST_HISTORY);
+        history = stored ? JSON.parse(stored) : defaultHistory;
+      } catch (e) {
+        history = defaultHistory;
+      }
+
+      const datalist = document.getElementById('destinationList');
+      datalist.innerHTML = '';
+      history.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        datalist.appendChild(opt);
+      });
+    }
+
+    function saveDestinationToHistory(destinationText) {
+      if (!destinationText || typeof destinationText !== 'string') return;
+      const cleanText = destinationText.trim();
+      if (!cleanText) return;
+
+      try {
+        let history = JSON.parse(localStorage.getItem(KEY_DEST_HISTORY) || '[]');
+        if (!Array.isArray(history)) history = [];
+
+        if (!history.includes(cleanText)) {
+          history.unshift(cleanText);
+          if (history.length > 25) history = history.slice(0, 25);
+          localStorage.setItem(KEY_DEST_HISTORY, JSON.stringify(history));
+          loadDestinationHistory();
+        }
+      } catch (e) {
+        console.error('Error saving destination history:', e);
+      }
+    }
+
+    function promptAdminUnlock() {
+      if (isAdminUnlocked) {
+        showToast('ข้อมูลอยู่ในสถานะปลดล็อกเรียบร้อยแล้ว', 'info');
+        return;
+      }
+
+      const inputPwd = prompt('🔒 ปลดล็อกข้อมูลผู้ดูแลระบบ (Admin Mode):\nกรุณากรอกรหัสผ่านเพื่อแก้ไขข้อมูลขาไป:');
+      if (inputPwd === null) return;
+
+      if (inputPwd.trim() === ADMIN_PASSWORD) {
+        isAdminUnlocked = true;
+
+        const fields = ['roDriver', 'roPlate', 'roDate', 'roDepartTime', 'roDestination', 'roStartOdo'];
+        fields.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.disabled = false;
+            el.classList.remove('bg-slate-200/90', 'disabled:cursor-not-allowed');
+            el.classList.add('bg-white', 'border-red-500', 'focus:ring-1', 'focus:ring-red-400');
+          }
+        });
+
+        const btnAdmin = document.getElementById('btnAdminUnlock');
+        btnAdmin.innerHTML = '<i data-lucide="unlock" class="w-3.5 h-3.5 text-emerald-600"></i><span class="text-emerald-700 font-bold">ปลดล็อกแล้ว</span>';
+        btnAdmin.className = 'inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-300 text-[11px] font-semibold';
+
+        const note = document.getElementById('adminUnlockNote');
+        note.textContent = '✓ ปลดล็อกสิทธิ์ Admin เรียบร้อย สามารถแก้ไขข้อมูลขาไปได้';
+        note.className = 'text-[10px] text-emerald-700 font-medium';
+
+        lucide.createIcons();
+        showToast('ยืนยันรหัสผ่านถูกต้อง ปลดล็อกฟิลด์ขาไปแล้ว', 'success');
+      } else {
+        showToast('รหัสผ่านไม่ถูกต้อง ไม่สามารถปลดล็อกได้', 'error');
+      }
+    }
+
+    function generateUniqueTripId() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+      return `TRIP-${yyyy}${mm}${dd}-${rand}`;
+    }
+
+    function getCurrentTimeString() {
+      const now = new Date();
+      return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function getCurrentDateString() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    async function processImageWithOcr(event, type, targetInputId, isDecimal = false) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      showToast('กำลังโหลดและบีบอัดรูปภาพด้วย Canvas...', 'info');
+
+      try {
+        const rawBase64 = await readFileAsDataURL(file);
+        const processed = await compressAndPrepareImage(rawBase64, isDecimal);
+
+        imagesState[type] = processed.previewBase64;
+        const previewBox = document.getElementById(`previewBox${capitalize(type)}`);
+        const previewImg = document.getElementById(`imgPreview${capitalize(type)}`);
+        const labelEl    = document.getElementById(`label${capitalize(type)}`);
+
+        if (previewImg) previewImg.src = processed.previewBase64;
+        if (previewBox) previewBox.classList.remove('hidden');
+        if (labelEl) labelEl.textContent = 'ถ่ายรูปใหม่ / เลือกภาพอื่น (เปลี่ยนรูป)';
+        lucide.createIcons();
+
+        await runOcrOnBase64(processed.ocrBase64, targetInputId, isDecimal);
+      } catch (err) {
+        console.error('Image Processing Error:', err);
+        showToast('ไม่สามารถประมวลผลรูปภาพได้ กรุณากรอกตัวเลขด้วยตนเอง', 'error');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    function compressAndPrepareImage(base64Str, isReceipt = false, maxWidth = 1000) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth || height > maxWidth) {
+              if (width > height) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              } else {
+                width = Math.round((width * maxWidth) / height);
+                height = maxWidth;
+              }
+            }
+
+            // Canvas 1: ภาพสีสำหรับพรีวิวและส่งขึ้น Google Drive
+            const canvasPreview = document.createElement('canvas');
+            canvasPreview.width = width;
+            canvasPreview.height = height;
+            const ctxPreview = canvasPreview.getContext('2d');
+            ctxPreview.drawImage(img, 0, 0, width, height);
+            const previewBase64 = canvasPreview.toDataURL('image/jpeg', 0.75);
+
+            // Canvas 2: ภาพ Grayscale เพิ่มความคมชัด (ไม่ตัดขาว-ดำแข็ง เพื่อไม่ให้ตัวเลขจมหาย)
+            const canvasOcr = document.createElement('canvas');
+            canvasOcr.width = width;
+            canvasOcr.height = height;
+            const ctxOcr = canvasOcr.getContext('2d');
+            ctxOcr.drawImage(canvasPreview, 0, 0, width, height);
+
+            const imgData = ctxOcr.getImageData(0, 0, width, height);
+            const d = imgData.data;
+
+            let minB = 255, maxB = 0, sumB = 0;
+            for (let i = 0; i < d.length; i += 4) {
+              const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+              if (gray < minB) minB = gray;
+              if (gray > maxB) maxB = gray;
+              sumB += gray;
+            }
+            const range = maxB - minB || 1;
+            const avgB = sumB / (d.length / 4);
+            // ถ้าเป็นหน้าปัดมืด ตัวเลขสว่าง ให้กลับสีเป็นตัวเลขเข้มบนพื้นสว่าง
+            const isDarkCluster = !isReceipt && (avgB < 110);
+
+            for (let i = 0; i < d.length; i += 4) {
+              const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+              let stretched = Math.round(((gray - minB) / range) * 255);
+              if (isDarkCluster) stretched = 255 - stretched;
+              // เพิ่ม Contrast แบบนุ่มนวล
+              const contrasted = Math.max(0, Math.min(255, Math.round((stretched - 128) * 1.4 + 128)));
+              d[i] = d[i + 1] = d[i + 2] = contrasted;
+              d[i + 3] = 255;
+            }
+            ctxOcr.putImageData(imgData, 0, 0);
+
+            const ocrBase64 = canvasOcr.toDataURL('image/jpeg', 0.9);
+            resolve({ previewBase64, ocrBase64 });
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = reject;
+        img.src = base64Str;
+      });
+    }
+
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function runOcrOnBase64(base64, targetInputId, isDecimal = false) {
+      showOcrLoading(true, 'กำลังโหลดระบบอ่านตัวเลข...');
+      let worker = null;
+      try {
+        worker = await Tesseract.createWorker('eng', 1, {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              const pct = Math.round((m.progress || 0) * 100);
+              updateOcrProgress(pct, `กำลังอ่านตัวเลข... ${pct}%`);
+            } else {
+              updateOcrProgress(30, 'กำลังเตรียมวิเคราะห์ภาพ...');
+            }
+          }
+        });
+
+        // บังคับให้อ่านเฉพาะตัวเลข และรองรับตัวเลขที่กระจายอยู่บนหน้าปัด/บิล
+        await worker.setParameters({
+          tessedit_char_whitelist: isDecimal ? '0123456789.,' : '0123456789',
+          tessedit_pageseg_mode: '11'
+        });
+
+        const result = await worker.recognize(base64);
+        const recognizedText = result.data.text || '';
+        const extractedNumber = extractNumberFromText(recognizedText, isDecimal);
+        showOcrLoading(false);
+
+        if (extractedNumber !== null) {
+          const targetInput = document.getElementById(targetInputId);
+          targetInput.value = extractedNumber;
+          if (targetInputId === 'inputReturnOdo') {
+            validateReturnOdoLive();
+          }
+          showToast(`✓ AI สแกนสำเร็จ: ${extractedNumber.toLocaleString()} (แตะเพื่อแก้ไขได้)`, 'success');
+        } else {
+          showToast('อ่านตัวเลขไม่ชัดเจน — กรุณาถ่ายใกล้ตัวเลขขึ้น หรือพิมพ์กรอกเอง', 'info');
+        }
+      } catch (err) {
+        console.error('OCR Error:', err);
+        showOcrLoading(false);
+        showToast('การสแกน OCR ติดขัด กรุณากรอกตัวเลขด้วยตนเอง', 'error');
+      } finally {
+        if (worker) {
+          await worker.terminate();
+        }
+      }
+    }
+
+    function extractNumberFromText(text, isDecimal = false) {
+      if (!text) return null;
+      const cleanText = text.replace(/,/g, '');
+
+      if (isDecimal) {
+        const matches = cleanText.match(/\d+(?:\.\d{1,2})?/g);
+        if (!matches || matches.length === 0) return null;
+        const validNumbers = matches.map(Number).filter(n => n > 0 && n < 50000);
+        return validNumbers.length > 0 ? validNumbers[validNumbers.length - 1] : null;
+      } else {
+        const longMatches = cleanText.match(/\d{4,7}/g);
+        if (longMatches && longMatches.length > 0) {
+          return parseInt(longMatches[0], 10);
+        }
+        const anyMatches = cleanText.match(/\d+/g);
+        if (!anyMatches || anyMatches.length === 0) return null;
+        anyMatches.sort((a, b) => b.length - a.length);
+        return parseInt(anyMatches[0], 10);
+      }
+    }
+
+    function showOcrLoading(show, status = '') {
+      const overlay = document.getElementById('ocrLoadingOverlay');
+      const statusEl = document.getElementById('ocrStatusText');
+      const bar = document.getElementById('ocrProgressBar');
+      if (show) {
+        bar.style.width = '10%';
+        statusEl.textContent = status;
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    function updateOcrProgress(percent, text) {
+      const bar = document.getElementById('ocrProgressBar');
+      const statusEl = document.getElementById('ocrStatusText');
+      bar.style.width = `${percent}%`;
+      if (text) statusEl.textContent = text;
+    }
+
+    function removeImage(type) {
+      imagesState[type] = null;
+      const previewBox = document.getElementById(`previewBox${capitalize(type)}`);
+      const previewImg = document.getElementById(`imgPreview${capitalize(type)}`);
+      const fileInput  = document.getElementById(`file${capitalize(type)}`);
+      const label      = document.getElementById(`label${capitalize(type)}`);
+
+      if (previewImg) previewImg.src = '';
+      if (previewBox) previewBox.classList.add('hidden');
+      if (fileInput)  fileInput.value = '';
+
+      if (label) {
+        if (type === 'fuelPhoto') {
+          label.textContent = '📷 ถ่ายรูป หรือ เลือกบิลน้ำมันจากอัลบั้ม (Auto OCR)';
+        } else if (type === 'returnPhoto') {
+          label.textContent = '📷 ถ่ายรูป หรือ เลือกภาพไมล์ขากลับ (Auto OCR)';
+        } else {
+          label.textContent = '📷 ถ่ายรูป หรือ เลือกภาพไมล์ขาไป (Auto OCR)';
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function showView(viewId) {
+      document.getElementById('viewHome').classList.add('hidden');
+      document.getElementById('viewNewTrip').classList.add('hidden');
+      document.getElementById('viewReturnTrip').classList.add('hidden');
+      document.getElementById(viewId).classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      lucide.createIcons();
+    }
+
+    function goToHomeView() {
+      renderHomeView();
+      showView('viewHome');
+    }
+
+    function goToNewTripView() {
+      if (activeTrip && activeTrip.trip_status === 'กำลังเดินทาง') {
+        if (!confirm(`คุณมีทริป [${activeTrip.trip_id}] กำลังเดินทางอยู่ ต้องการสร้างทริปใหม่ทับของเดิมหรือไม่?`)) {
+          return;
+        }
+      }
+      setupNewTripForm();
+      showView('viewNewTrip');
+    }
+
+    function setupNewTripForm() {
+      const newTripId = generateUniqueTripId();
+      document.getElementById('displayNewTripId').textContent = newTripId;
+
+      document.getElementById('inputTravelDate').value = getCurrentDateString();
+      document.getElementById('inputDepartTime').value = getCurrentTimeString();
+      document.getElementById('inputDestination').value = '';
+      document.getElementById('inputStartOdo').value = '';
+      removeImage('startPhoto');
+
+      const prefs = getUserPreferences();
+      if (prefs) {
+        document.getElementById('inputEmployeeName').value = prefs.employee_name || '';
+        document.getElementById('inputDepartment').value = prefs.department || '';
+        document.getElementById('inputVehiclePlate').value = prefs.vehicle_plate || '';
+      } else {
+        document.getElementById('inputEmployeeName').value = '';
+        document.getElementById('inputDepartment').value = '';
+        document.getElementById('inputVehiclePlate').value = '';
+      }
+    }
+
+    function renderHomeView() {
+      loadActiveTripFromStorage();
+
+      const prefs = getUserPreferences();
+      const prefSummary = document.getElementById('prefSummary');
+      if (prefs && prefs.employee_name) {
+        prefSummary.textContent = `${prefs.employee_name} (${prefs.department || '-'}) | ${prefs.vehicle_plate || '-'}`;
+      } else {
+        prefSummary.textContent = 'ยังไม่ได้ตั้งค่าข้อมูลพนักงาน (กรอกครั้งแรกจะจดจำให้อัตโนมัติ)';
+      }
+
+      const activeContainer = document.getElementById('activeTripContainer');
+      if (activeTrip && activeTrip.trip_status === 'กำลังเดินทาง') {
+        document.getElementById('activeCardTripId').textContent = activeTrip.trip_id;
+        document.getElementById('activeCardDate').textContent = activeTrip.travel_date;
+        document.getElementById('activeCardDestination').querySelector('span').textContent = activeTrip.destination;
+        document.getElementById('activeCardDriver').textContent = activeTrip.employee_name;
+        document.getElementById('activeCardPlate').textContent = activeTrip.vehicle_plate;
+        document.getElementById('activeCardStartOdo').textContent = Number(activeTrip.start_odometer).toLocaleString();
+        document.getElementById('activeCardDepartTime').textContent = activeTrip.departure_time;
+        activeContainer.classList.remove('hidden');
+      } else {
+        activeContainer.classList.add('hidden');
+      }
+    }
+
+    function resumeActiveTrip() {
+      if (!activeTrip) return;
+
+      isAdminUnlocked = false;
+      document.getElementById('displayReturnTripId').textContent = activeTrip.trip_id;
+
+      const roDriver = document.getElementById('roDriver');
+      const roPlate = document.getElementById('roPlate');
+      const roDate = document.getElementById('roDate');
+      const roDepartTime = document.getElementById('roDepartTime');
+      const roDestination = document.getElementById('roDestination');
+      const roStartOdo = document.getElementById('roStartOdo');
+
+      roDriver.value = activeTrip.employee_name || '';
+      roPlate.value = activeTrip.vehicle_plate || '';
+      roDate.value = activeTrip.travel_date || '';
+      roDepartTime.value = activeTrip.departure_time || '';
+      roDestination.value = activeTrip.destination || '';
+      roStartOdo.value = activeTrip.start_odometer ?? '';
+
+      [roDriver, roPlate, roDate, roDepartTime, roDestination].forEach(el => {
+        el.disabled = true;
+        el.className = 'w-full px-2 py-1.5 bg-slate-200/90 text-slate-800 rounded border border-slate-300 text-xs font-medium disabled:cursor-not-allowed';
+      });
+      roStartOdo.disabled = true;
+      roStartOdo.className = 'w-full px-2 py-1.5 bg-slate-200/90 text-blue-900 rounded border border-slate-300 text-xs font-bold font-mono disabled:cursor-not-allowed';
+
+      const btnAdmin = document.getElementById('btnAdminUnlock');
+      btnAdmin.innerHTML = '<i data-lucide="key" class="w-3.5 h-3.5 text-red-600"></i><span>Admin</span>';
+      btnAdmin.className = 'inline-flex items-center gap-1 bg-white hover:bg-red-50 text-slate-700 hover:text-red-700 px-2.5 py-1 rounded-lg border border-slate-300 text-[11px] font-semibold transition shadow-sm';
+
+      document.getElementById('adminUnlockNote').textContent = '* หากพนักงานคีย์ข้อมูลขาไปผิด ให้กดปุ่ม [Admin] เพื่อใส่รหัสผ่านปลดล็อก';
+      document.getElementById('adminUnlockNote').className = 'text-[10px] text-slate-400 italic';
+
+      document.getElementById('inputFuelCost').value = activeTrip.fuel_cost > 0 ? activeTrip.fuel_cost : '';
+      document.getElementById('inputReturnOdo').value = activeTrip.return_odometer ?? '';
+      document.getElementById('inputReturnTime').value = getCurrentTimeString();
+      document.getElementById('liveOdoHint').textContent = `(เลขไมล์ขาไปคือ ${Number(activeTrip.start_odometer).toLocaleString()} กม.)`;
+
+      if (activeTrip.start_odo_photo) {
+        imagesState.startPhoto = activeTrip.start_odo_photo;
+      }
+      removeImage('fuelPhoto');
+      removeImage('returnPhoto');
+
+      validateReturnOdoLive();
+      showView('viewReturnTrip');
+    }
+
+    function saveActiveTripSafely(tripObj) {
+      try {
+        localStorage.setItem(KEY_ACTIVE_TRIP, JSON.stringify(tripObj));
+      } catch (err) {
+        console.warn('localStorage quota exceeded, saving without photo:', err);
+        const liteCopy = { ...tripObj, start_odo_photo: null, fuel_photo: null, return_odo_photo: null };
+        try {
+          localStorage.setItem(KEY_ACTIVE_TRIP, JSON.stringify(liteCopy));
+        } catch (e2) {
+          console.error('Failed to save activeTrip:', e2);
+        }
+      }
+    }
+
+    async function handleSaveStartTrip(e) {
+      e.preventDefault();
+
+      const tripId = document.getElementById('displayNewTripId').textContent;
+      const startOdo = parseFloat(document.getElementById('inputStartOdo').value);
+
+      if (isNaN(startOdo) || startOdo < 0) {
+        showToast('กรุณากรอกเลขไมล์ขาไปให้ถูกต้อง', 'error');
+        return;
+      }
+
+      const empName = document.getElementById('inputEmployeeName').value.trim();
+      const dept = document.getElementById('inputDepartment').value.trim();
+      const plate = document.getElementById('inputVehiclePlate').value.trim();
+      const dest = document.getElementById('inputDestination').value.trim();
+
+      saveUserPreferences(empName, dept, plate);
+      saveDestinationToHistory(dest);
+
+      activeTrip = {
+        trip_id: tripId,
+        travel_date: document.getElementById('inputTravelDate').value,
+        employee_name: empName,
+        department: dept,
+        vehicle_plate: plate,
+        destination: dest,
+        start_odometer: startOdo,
+        start_odo_photo: imagesState.startPhoto || null,
+        departure_time: document.getElementById('inputDepartTime').value,
+        fuel_cost: 0,
+        fuel_photo: null,
+        return_odometer: null,
+        return_odo_photo: null,
+        return_time: null,
+        trip_status: 'กำลังเดินทาง',
+        created_at: new Date().toISOString()
+      };
+
+      saveActiveTripSafely(activeTrip);
+
+      const btn = document.getElementById('btnSubmitStart');
+      const btnText = document.getElementById('btnSubmitStartText');
+      btn.disabled = true;
+      btnText.textContent = 'กำลังบันทึกข้อมูลขาไป...';
+
+      const synced = await syncToGoogleSheets(activeTrip, false);
+
+      btn.disabled = false;
+      btnText.textContent = 'บันทึกออกเดินทาง (สถานะ: กำลังเดินทาง)';
+
+      if (synced) {
+        // ล้างรูปขาไปออกจากเครื่องหลังอัปโหลดสำเร็จ เพื่อไม่ให้อัปโหลดซ้ำตอนปิดทริป
+        activeTrip.start_odo_photo = null;
+        imagesState.startPhoto = null;
+        saveActiveTripSafely(activeTrip);
+        showToast('บันทึกขาไปและซิงก์ขึ้น Google Sheets เรียบร้อย!', 'success');
+      } else {
+        showToast('บันทึกขาไปในเครื่องเรียบร้อย (จะซิงก์อีกครั้งตอนปิดทริป)', 'info');
+      }
+
+      setTimeout(() => {
+        goToHomeView();
+      }, 900);
+    }
+
+    function validateReturnOdoLive() {
+      if (!activeTrip) return;
+      const roStartParsed = parseFloat(document.getElementById('roStartOdo').value);
+      const currentStartOdo = !isNaN(roStartParsed) ? roStartParsed : (activeTrip.start_odometer ?? 0);
+      const returnInput = document.getElementById('inputReturnOdo');
+      const hint = document.getElementById('liveOdoHint');
+      const summaryDistance = document.getElementById('summaryTotalDistance');
+
+      const returnVal = parseFloat(returnInput.value);
+
+      if (isNaN(returnVal) || returnInput.value === '') {
+        hint.textContent = `(เลขไมล์ขาไปคือ ${currentStartOdo.toLocaleString()} กม.)`;
+        hint.className = 'text-[11px] font-medium text-slate-500';
+        summaryDistance.textContent = '0 กม.';
+        return;
+      }
+
+      const diff = returnVal - currentStartOdo;
+      if (diff < 0) {
+        hint.textContent = `⚠️ เลขไมล์ขากลับต้องไม่น้อยกว่าขาไป (${currentStartOdo.toLocaleString()} กม.)`;
+        hint.className = 'text-[11px] font-bold text-red-600';
+        summaryDistance.textContent = 'เลขไมล์ไม่ถูกต้อง';
+      } else {
+        hint.textContent = `✓ ระยะทางขาไปถึงกลับ: +${diff.toLocaleString()} กม.`;
+        hint.className = 'text-[11px] font-semibold text-blue-700';
+        summaryDistance.textContent = `${diff.toLocaleString()} กม.`;
+      }
+    }
+
+    async function handleFinalSubmit(e) {
+      e.preventDefault();
+
+      if (!activeTrip) {
+        showToast('ไม่พบข้อมูลทริป กรุณาเริ่มทริปใหม่', 'error');
+        return;
+      }
+
+      const roStartParsed = parseFloat(document.getElementById('roStartOdo').value);
+      const startOdo = !isNaN(roStartParsed) ? roStartParsed : (activeTrip.start_odometer ?? 0);
+      const returnOdo = parseFloat(document.getElementById('inputReturnOdo').value);
+
+      if (isNaN(returnOdo) || returnOdo < startOdo) {
+        showToast(`ข้อผิดพลาด: เลขไมล์ขากลับ (${isNaN(returnOdo) ? '-' : returnOdo}) ต้องมากกว่าหรือเท่ากับขาไป (${startOdo})`, 'error');
+        document.getElementById('inputReturnOdo').focus();
+        return;
+      }
+
+      const fuelParsed = parseFloat(document.getElementById('inputFuelCost').value);
+      const fuelCost = !isNaN(fuelParsed) && fuelParsed >= 0 ? fuelParsed : 0;
+
+      if (isAdminUnlocked) {
+        activeTrip.employee_name = document.getElementById('roDriver').value.trim() || activeTrip.employee_name;
+        activeTrip.vehicle_plate = document.getElementById('roPlate').value.trim() || activeTrip.vehicle_plate;
+        activeTrip.travel_date = document.getElementById('roDate').value || activeTrip.travel_date;
+        activeTrip.departure_time = document.getElementById('roDepartTime').value || activeTrip.departure_time;
+        activeTrip.destination = document.getElementById('roDestination').value.trim() || activeTrip.destination;
+        activeTrip.start_odometer = startOdo;
+        saveDestinationToHistory(activeTrip.destination);
+      }
+
+      activeTrip.fuel_cost = fuelCost;
+      activeTrip.fuel_photo = imagesState.fuelPhoto || null;
+      activeTrip.return_odometer = returnOdo;
+      activeTrip.return_odo_photo = imagesState.returnPhoto || null;
+      activeTrip.return_time = document.getElementById('inputReturnTime').value || getCurrentTimeString();
+      activeTrip.trip_status = 'เสร็จสิ้น';
+      activeTrip.completed_at = new Date().toISOString();
+
+      const btn = document.getElementById('btnSubmitFinal');
+      const btnText = document.getElementById('btnSubmitFinalText');
+      btn.disabled = true;
+      btnText.textContent = 'กำลังส่งข้อมูลและรูปภาพขึ้น Google Sheets...';
+
+      const success = await syncToGoogleSheets(activeTrip, true);
+
+      btn.disabled = false;
+      btnText.textContent = 'จบการเดินทางและส่งข้อมูลขึ้น Google Sheets';
+
+      if (success) {
+        localStorage.removeItem(KEY_ACTIVE_TRIP);
+        activeTrip = null;
+        showToast('บันทึกและส่งข้อมูลขึ้น Google Sheets สำเร็จเรียบร้อย!', 'success');
+        setTimeout(() => {
+          goToHomeView();
+        }, 1500);
+      }
+    }
+
+    async function syncToGoogleSheets(tripData, isFinal = false) {
+      const scriptUrl = getScriptUrl();
+      if (!scriptUrl) {
+        if (isFinal) {
+          showToast('ยังไม่ได้ตั้งค่า Google Apps Script Web App URL กรุณากดที่ไอคอนฟันเฟือง', 'error');
+          openSettingsModal();
+        }
+        return false;
+      }
+
+      try {
+        if (isFinal) {
+          showToast('กำลังเชื่อมต่อ Google Sheets...', 'info');
+        }
+
+        const response = await fetch(scriptUrl, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify(tripData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          return true;
+        } else {
+          if (isFinal) {
+            showToast(`Apps Script แจ้งเตือน: ${result.message}`, 'error');
+          }
+          return false;
+        }
+      } catch (error) {
+        console.error('Fetch Error:', error);
+        if (isFinal) {
+          showToast('ส่งข้อมูลไม่สำเร็จ โปรดตรวจสอบ Web App URL หรือการเชื่อมต่ออินเทอร์เน็ต', 'error');
+        }
+        return false;
+      }
+    }
+
+    function saveUserPreferences(name, dept, plate) {
+      localStorage.setItem(KEY_PREFS, JSON.stringify({ employee_name: name, department: dept, vehicle_plate: plate }));
+    }
+    function getUserPreferences() {
+      try { return JSON.parse(localStorage.getItem(KEY_PREFS)); } catch (e) { return null; }
+    }
+    function clearUserPreferences() {
+      localStorage.removeItem(KEY_PREFS);
+      renderHomeView();
+      showToast('ล้างข้อมูลพนักงานที่จดจำเรียบร้อย', 'info');
+    }
+
+    function loadActiveTripFromStorage() {
+      try {
+        const stored = localStorage.getItem(KEY_ACTIVE_TRIP);
+        activeTrip = stored ? JSON.parse(stored) : null;
+      } catch (e) {
+        activeTrip = null;
+      }
+    }
+
+    function openSettingsModal() {
+      document.getElementById('settingScriptUrl').value = getScriptUrl();
+      document.getElementById('modalSettings').classList.remove('hidden');
+    }
+    function closeSettingsModal() {
+      document.getElementById('modalSettings').classList.add('hidden');
+    }
+    function saveSettings() {
+      const url = document.getElementById('settingScriptUrl').value.trim();
+      if (url) {
+        localStorage.setItem(KEY_SCRIPT_URL, url);
+      } else {
+        localStorage.removeItem(KEY_SCRIPT_URL);
+      }
+      closeSettingsModal();
+      showToast('บันทึกการตั้งค่า Web App URL สำเร็จ', 'success');
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const content = document.getElementById('toastContent');
+      const icon = document.getElementById('toastIcon');
+      const text = document.getElementById('toastMessage');
+
+      clearTimeout(toastTimer);
+      clearTimeout(toastHideTimer);
+
+      text.textContent = msg;
+      content.className = 'p-3.5 rounded-xl shadow-lg border text-xs font-medium flex items-center space-x-2.5 ';
+      if (type === 'error') {
+        content.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
+        icon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-red-600"></i>';
+      } else if (type === 'success') {
+        content.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-200');
+        icon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-blue-600"></i>';
+      } else {
+        content.classList.add('bg-slate-900', 'text-white', 'border-slate-800');
+        icon.innerHTML = '<i data-lucide="info" class="w-4 h-4 text-blue-400"></i>';
+      }
+
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.remove('opacity-0', '-translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+      }, 10);
+      lucide.createIcons();
+
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-2');
+        toastHideTimer = setTimeout(() => toast.classList.add('hidden'), 300);
+      }, 3500);
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+  </script>
+</body>
+</html>
