@@ -559,18 +559,20 @@
         </button>
       </div>
       <div class="space-y-2 text-xs">
-        <label class="block font-medium text-slate-700">Google Apps Script URL (exec URL):</label>
-        <textarea id="settingScriptUrl" rows="3" placeholder="https://script.google.com/macros/s/.../exec" class="w-full p-2.5 border border-slate-200 rounded-lg font-mono text-[11px] text-slate-800 focus:border-blue-600 outline-none"></textarea>
-        <p class="text-[10px] text-slate-400">
-          นำ Web App URL ที่ Deploy จาก Code.gs มาใส่ที่นี่ (หากใส่ค่าไว้ในโค้ด DEFAULT_SCRIPT_URL แล้ว พนักงานสแกน QR Code ใช้งานได้ทันทีไม่ต้องตั้งค่าเอง)
+        <div class="flex items-center justify-between">
+          <label class="block font-medium text-slate-700">Google Apps Script URL (exec URL):</label>
+          <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            <i data-lucide="lock" class="w-3 h-3"></i> ค่ามาตรฐานระบบ
+          </span>
+        </div>
+        <textarea id="settingScriptUrl" rows="3" readonly class="w-full p-2.5 border border-slate-200 rounded-lg font-mono text-[11px] text-slate-600 bg-slate-100 outline-none cursor-not-allowed select-all" readonly>https://script.google.com/macros/s/AKfycbygKgqTAcpyFO84wzKb29RFcz_UQVadvAucfKhZj8abemmvgrZK4Ve9_oUvd9SYtTU/exec</textarea>
+        <p class="text-[10px] text-slate-500">
+          ตั้งค่าเป็นค่ามาตรฐานของระบบเรียบร้อยแล้ว (ล็อกห้ามแก้ไข) พนักงานสามารถสแกน QR Code แล้วใช้งานได้ทันที
         </p>
       </div>
       <div class="flex space-x-2 pt-2">
-        <button onclick="saveSettings()" class="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-lg text-xs shadow-sm transition">
-          บันทึกการตั้งค่า
-        </button>
-        <button onclick="closeSettingsModal()" class="px-4 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-xs hover:bg-slate-50 transition">
-          ยกเลิก
+        <button onclick="closeSettingsModal()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg text-xs shadow-sm transition">
+          ปิดหน้าต่าง
         </button>
       </div>
     </div>
@@ -610,7 +612,7 @@
     // ใส่ลิงก์ Google Apps Script Web App URL (ลงท้ายด้วย /exec) ตรงนี้
     // เพื่อให้พนักงานสแกน QR Code แล้วใช้งานส่งข้อมูลได้ทันทีโดยไม่ต้องกดตั้งค่าเอง
     // =========================================================================
-    const DEFAULT_SCRIPT_URL = '';
+    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygKgqTAcpyFO84wzKb29RFcz_UQVadvAucfKhZj8abemmvgrZK4Ve9_oUvd9SYtTU/exec';
 
     const KEY_ACTIVE_TRIP = 'TRANSPORT_ACTIVE_TRIP';
     const KEY_PREFS = 'TRANSPORT_USER_PREFS';
@@ -672,7 +674,7 @@
     });
 
     function getScriptUrl() {
-      return (localStorage.getItem(KEY_SCRIPT_URL) || DEFAULT_SCRIPT_URL || '').trim();
+      return DEFAULT_SCRIPT_URL.trim();
     }
 
     function loadDestinationHistory() {
@@ -1779,19 +1781,13 @@
     function openSettingsModal() {
       document.getElementById('settingScriptUrl').value = getScriptUrl();
       document.getElementById('modalSettings').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
     }
     function closeSettingsModal() {
       document.getElementById('modalSettings').classList.add('hidden');
     }
     function saveSettings() {
-      const url = document.getElementById('settingScriptUrl').value.trim();
-      if (url) {
-        localStorage.setItem(KEY_SCRIPT_URL, url);
-      } else {
-        localStorage.removeItem(KEY_SCRIPT_URL);
-      }
       closeSettingsModal();
-      showToast('บันทึกการตั้งค่า Web App URL สำเร็จ', 'success');
     }
 
     function showToast(msg, type = 'info') {
