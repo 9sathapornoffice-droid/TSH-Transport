@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -307,11 +309,17 @@
             <span class="text-[10px] text-blue-700 font-semibold bg-blue-100 px-2 py-0.5 rounded-full">AI OCR</span>
           </div>
 
-          <label class="w-full cursor-pointer bg-white hover:bg-blue-100 border-2 border-dashed border-blue-500 text-blue-800 py-3 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs font-bold shadow-sm transition active:scale-[0.99]">
-            <i data-lucide="image-plus" class="w-5 h-5 text-blue-600"></i>
-            <span id="labelStartPhoto">📷 ถ่ายรูป หรือ เลือกภาพไมล์ขาไป (Auto OCR)</span>
-            <input type="file" id="fileStartPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'startPhoto', 'inputStartOdo', false)">
-          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="openLiveCamera('startPhoto', 'inputStartOdo', false)" class="bg-blue-700 hover:bg-blue-800 active:scale-[0.98] text-white py-3 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md transition">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+              <span>📷 เปิดกล้องถ่ายสด</span>
+            </button>
+            <label class="cursor-pointer bg-white hover:bg-blue-50 active:scale-[0.98] border-2 border-dashed border-blue-400 text-blue-900 py-3 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm transition text-center">
+              <i data-lucide="image" class="w-4 h-4 text-blue-600"></i>
+              <span id="labelStartPhoto">📁 เลือกรูปจากเครื่อง</span>
+              <input type="file" id="fileStartPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'startPhoto', 'inputStartOdo', false)">
+            </label>
+          </div>
 
           <div id="previewBoxStartPhoto" class="hidden relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100 h-36">
             <img id="imgPreviewStartPhoto" src="" alt="Start Odo" class="w-full h-full object-contain bg-slate-900">
@@ -414,11 +422,17 @@
             <span class="text-[10px] text-blue-700 font-semibold bg-blue-100 px-2 py-0.5 rounded-full">OCR สแกนบิล</span>
           </div>
 
-          <label class="w-full cursor-pointer bg-white hover:bg-blue-100 border border-dashed border-blue-400 text-blue-900 py-2.5 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs font-bold shadow-sm transition active:scale-[0.99]">
-            <i data-lucide="image-plus" class="w-4 h-4 text-red-600"></i>
-            <span id="labelFuelPhoto">📷 ถ่ายรูป หรือ เลือกบิลน้ำมันจากอัลบั้ม (Auto OCR)</span>
-            <input type="file" id="fileFuelPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'fuelPhoto', 'inputFuelCost', true)">
-          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="openLiveCamera('fuelPhoto', 'inputFuelCost', true)" class="bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md transition">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+              <span>📷 ถ่ายบิลน้ำมัน</span>
+            </button>
+            <label class="cursor-pointer bg-white hover:bg-blue-50 active:scale-[0.98] border border-dashed border-blue-400 text-blue-900 py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm transition text-center">
+              <i data-lucide="image" class="w-4 h-4 text-red-600"></i>
+              <span id="labelFuelPhoto">📁 เลือกรูปบิล</span>
+              <input type="file" id="fileFuelPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'fuelPhoto', 'inputFuelCost', true)">
+            </label>
+          </div>
 
           <div id="previewBoxFuelPhoto" class="hidden relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100 h-32">
             <img id="imgPreviewFuelPhoto" src="" alt="Fuel Receipt" class="w-full h-full object-contain bg-slate-900">
@@ -442,11 +456,17 @@
             <span class="text-[10px] text-red-700 font-semibold bg-red-100 px-2 py-0.5 rounded-full">AI Auto-OCR</span>
           </div>
 
-          <label class="w-full cursor-pointer bg-white hover:bg-red-100 border-2 border-dashed border-red-400 text-red-800 py-3 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs font-bold shadow-sm transition active:scale-[0.99]">
-            <i data-lucide="image-plus" class="w-5 h-5 text-red-600"></i>
-            <span id="labelReturnPhoto">📷 ถ่ายรูป หรือ เลือกภาพไมล์ขากลับ (Auto OCR)</span>
-            <input type="file" id="fileReturnPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'returnPhoto', 'inputReturnOdo', false)">
-          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="openLiveCamera('returnPhoto', 'inputReturnOdo', false)" class="bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white py-3 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md transition">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+              <span>📷 เปิดกล้องถ่ายสด</span>
+            </button>
+            <label class="cursor-pointer bg-white hover:bg-red-50 active:scale-[0.98] border-2 border-dashed border-red-400 text-red-900 py-3 px-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm transition text-center">
+              <i data-lucide="image" class="w-4 h-4 text-red-600"></i>
+              <span id="labelReturnPhoto">📁 เลือกรูปจากเครื่อง</span>
+              <input type="file" id="fileReturnPhoto" accept="image/*" capture="environment" class="hidden" onchange="processImageWithOcr(event, 'returnPhoto', 'inputReturnOdo', false)">
+            </label>
+          </div>
 
           <div id="previewBoxReturnPhoto" class="hidden relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100 h-36">
             <img id="imgPreviewReturnPhoto" src="" alt="Return Odo" class="w-full h-full object-contain bg-slate-900">
@@ -491,6 +511,51 @@
     </section>
 
   </main>
+
+  <!-- ================= MODAL: LIVE CAMERA SCANNER ================= -->
+  <div id="modalCamera" class="fixed inset-0 bg-slate-950/95 z-50 hidden flex flex-col items-center justify-between p-4 backdrop-blur select-none">
+    <div class="w-full max-w-md flex items-center justify-between text-white py-2 z-10">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-red-600/30 border border-red-500/50 flex items-center justify-center text-red-400">
+          <i data-lucide="camera" class="w-4 h-4"></i>
+        </div>
+        <span id="cameraModalTitle" class="font-bold text-sm text-white">เปิดกล้องถ่ายรูป</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button type="button" onclick="switchCameraFacing()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 transition border border-slate-700" title="สลับกล้องหน้า/หลัง">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+        <button type="button" onclick="closeLiveCamera()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 transition border border-slate-700" title="ปิดกล้อง">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="relative w-full max-w-md flex-1 rounded-2xl overflow-hidden bg-black flex items-center justify-center my-2 border border-slate-800 shadow-2xl">
+      <video id="cameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+
+      <!-- Targeting overlay guide -->
+      <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
+        <div class="w-full h-40 border-2 border-red-500 rounded-xl shadow-[0_0_0_9999px_rgba(15,23,42,0.7)] relative">
+          <div class="absolute top-2 left-2 text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded shadow">
+            เล็งตัวเลขให้อยู่ในกรอบนี้
+          </div>
+          <div class="absolute inset-x-0 top-1/2 h-0.5 bg-red-500/50 animate-pulse"></div>
+        </div>
+        <p class="text-white/90 text-xs mt-4 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700 backdrop-blur">
+          ถือกล้องให้นิ่งและระวังแสงสะท้อน
+        </p>
+      </div>
+    </div>
+
+    <div class="w-full max-w-md flex items-center justify-center py-3 z-10">
+      <button type="button" onclick="takePhotoFromCamera()" class="w-20 h-20 rounded-full border-4 border-white/80 bg-red-600 hover:bg-red-700 active:scale-95 shadow-2xl flex items-center justify-center transition-all" title="กดถ่ายรูป">
+        <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-inner">
+          <i data-lucide="camera" class="w-8 h-8 text-red-600"></i>
+        </div>
+      </button>
+    </div>
+  </div>
 
   <!-- ================= MODAL: SETTINGS ================= -->
   <div id="modalSettings" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -695,6 +760,120 @@
       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     }
 
+    let currentCameraStream = null;
+    let currentCameraFacing = 'environment';
+    let activeCameraContext = {
+      type: null,
+      targetInputId: null,
+      isDecimal: false
+    };
+
+    async function openLiveCamera(type, targetInputId, isDecimal = false) {
+      activeCameraContext = { type, targetInputId, isDecimal };
+
+      const titleEl = document.getElementById('cameraModalTitle');
+      if (titleEl) {
+        if (type === 'fuelPhoto') titleEl.textContent = 'ถ่ายรูปบิลน้ำมัน';
+        else if (type === 'returnPhoto') titleEl.textContent = 'ถ่ายรูปไมล์ขากลับ';
+        else titleEl.textContent = 'ถ่ายรูปไมล์ขาไป';
+      }
+
+      const modal = document.getElementById('modalCamera');
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+
+      await startCameraStream();
+    }
+
+    async function startCameraStream() {
+      if (currentCameraStream) {
+        currentCameraStream.getTracks().forEach(track => track.stop());
+        currentCameraStream = null;
+      }
+
+      const video = document.getElementById('cameraVideo');
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: currentCameraFacing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      };
+
+      try {
+        currentCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentCameraStream;
+        await video.play();
+      } catch (err) {
+        console.warn('getUserMedia error with facingMode, falling back:', err);
+        try {
+          currentCameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          video.srcObject = currentCameraStream;
+          await video.play();
+        } catch (err2) {
+          console.error('Camera access failed:', err2);
+          closeLiveCamera();
+          showToast('ไม่สามารถเปิดกล้องได้ กรุณากดเลือกรูปจากเครื่องแทน หรืออนุญาตสิทธิ์กล้อง', 'error');
+          const fileInput = document.getElementById(`file${capitalize(activeCameraContext.type)}`);
+          if (fileInput) fileInput.click();
+        }
+      }
+    }
+
+    async function switchCameraFacing() {
+      currentCameraFacing = currentCameraFacing === 'environment' ? 'user' : 'environment';
+      await startCameraStream();
+    }
+
+    function closeLiveCamera() {
+      if (currentCameraStream) {
+        currentCameraStream.getTracks().forEach(track => track.stop());
+        currentCameraStream = null;
+      }
+      const modal = document.getElementById('modalCamera');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function takePhotoFromCamera() {
+      const video = document.getElementById('cameraVideo');
+      if (!video || !video.videoWidth) {
+        showToast('กล้องยังไม่พร้อมใช้งาน', 'error');
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const rawBase64 = canvas.toDataURL('image/jpeg', 0.9);
+
+      closeLiveCamera();
+
+      const { type, targetInputId, isDecimal } = activeCameraContext;
+      showToast('กำลังวิเคราะห์ตัวเลขจากภาพที่ถ่าย...', 'info');
+
+      try {
+        const processed = await compressAndPrepareImage(rawBase64, isDecimal);
+        imagesState[type] = processed.previewBase64;
+
+        const previewBox = document.getElementById(`previewBox${capitalize(type)}`);
+        const previewImg = document.getElementById(`imgPreview${capitalize(type)}`);
+        const labelEl    = document.getElementById(`label${capitalize(type)}`);
+
+        if (previewImg) previewImg.src = processed.previewBase64;
+        if (previewBox) previewBox.classList.remove('hidden');
+        if (labelEl) labelEl.textContent = '📁 เปลี่ยนรูป';
+        lucide.createIcons();
+
+        await runOcrOnBase64(processed.ocrBase64, targetInputId, isDecimal);
+      } catch (err) {
+        console.error('Error processing captured photo:', err);
+        showToast('ประมวลผลรูปถ่ายไม่สำเร็จ กรุณากรอกตัวเลขด้วยตนเอง', 'error');
+      }
+    }
+
     async function processImageWithOcr(event, type, targetInputId, isDecimal = false) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
@@ -712,7 +891,7 @@
 
         if (previewImg) previewImg.src = processed.previewBase64;
         if (previewBox) previewBox.classList.remove('hidden');
-        if (labelEl) labelEl.textContent = 'ถ่ายรูปใหม่ / เลือกภาพอื่น (เปลี่ยนรูป)';
+        if (labelEl) labelEl.textContent = '📁 เปลี่ยนรูป';
         lucide.createIcons();
 
         await runOcrOnBase64(processed.ocrBase64, targetInputId, isDecimal);
@@ -904,11 +1083,11 @@
 
       if (label) {
         if (type === 'fuelPhoto') {
-          label.textContent = '📷 ถ่ายรูป หรือ เลือกบิลน้ำมันจากอัลบั้ม (Auto OCR)';
+          label.textContent = '📁 เลือกรูปบิล';
         } else if (type === 'returnPhoto') {
-          label.textContent = '📷 ถ่ายรูป หรือ เลือกภาพไมล์ขากลับ (Auto OCR)';
+          label.textContent = '📁 เลือกรูปจากเครื่อง';
         } else {
-          label.textContent = '📷 ถ่ายรูป หรือ เลือกภาพไมล์ขาไป (Auto OCR)';
+          label.textContent = '📁 เลือกรูปจากเครื่อง';
         }
       }
       lucide.createIcons();
