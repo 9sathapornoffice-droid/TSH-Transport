@@ -1,0 +1,62 @@
+/* Custom styles for Transport Data Entry System */
+
+/* Smooth Transitions */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Tab Button Styling */
+.tab-btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-btn.active {
+    background-color: #ffffff;
+    color: #047857;
+    font-weight: 600;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+}
+
+/* Form controls */
+input:focus, select:focus {
+    transform: translateY(-0.5px);
+}
+
+/* Subtle Card Hover */
+.trip-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.trip-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* Pulse badge animation */
+@keyframes soft-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.soft-pulse {
+    animation: soft-pulse 2s infinite ease-in-out;
+}
+
+/* Print Optimization */
+@media print {
+    header, nav, button, .no-print {
+        display: none !important;
+    }
+    main {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+}
