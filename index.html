@@ -536,7 +536,7 @@
 
       <!-- Targeting overlay guide -->
       <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
-        <div class="w-full h-40 border-2 border-red-500 rounded-xl shadow-[0_0_0_9999px_rgba(15,23,42,0.7)] relative">
+        <div id="cameraGuideBox" class="w-full h-40 border-2 border-red-500 rounded-xl shadow-[0_0_0_9999px_rgba(15,23,42,0.7)] relative">
           <div class="absolute top-2 left-2 text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded shadow">
             เล็งตัวเลขให้อยู่ในกรอบนี้
           </div>
@@ -842,12 +842,52 @@
         return;
       }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const rawBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      // 1. ภาพเต็มความละเอียดสำหรับบันทึกและอัปโหลดขึ้น Google Drive
+      const fullCanvas = document.createElement('canvas');
+      fullCanvas.width = video.videoWidth;
+      fullCanvas.height = video.videoHeight;
+      const fullCtx = fullCanvas.getContext('2d');
+      fullCtx.drawImage(video, 0, 0, fullCanvas.width, fullCanvas.height);
+      const rawBase64 = fullCanvas.toDataURL('image/jpeg', 0.9);
+
+      // 2. ครอปเฉพาะบริเวณในกรอบเล็งสีแดง (Targeting Box) สำหรับส่งเข้า OCR
+      // ช่วยตัดเกจความเร็ว (100, 120, 140) และเข็มไมล์/พวงมาลัยออก ให้เหลือแต่ตัวเลขไมล์ล้วนๆ
+      const guideBox = document.getElementById('cameraGuideBox');
+      let ocrInputBase64 = rawBase64;
+
+      if (guideBox) {
+        try {
+          const vRect = video.getBoundingClientRect();
+          const gRect = guideBox.getBoundingClientRect();
+
+          const scale = Math.max(vRect.width / video.videoWidth, vRect.height / video.videoHeight);
+          const renderedWidth = video.videoWidth * scale;
+          const renderedHeight = video.videoHeight * scale;
+          const offsetX = (vRect.width - renderedWidth) / 2;
+          const offsetY = (vRect.height - renderedHeight) / 2;
+
+          let sx = (gRect.left - vRect.left - offsetX) / scale;
+          let sy = (gRect.top - vRect.top - offsetY) / scale;
+          let sw = gRect.width / scale;
+          let sh = gRect.height / scale;
+
+          sx = Math.max(0, Math.min(video.videoWidth - 10, sx));
+          sy = Math.max(0, Math.min(video.videoHeight - 10, sy));
+          sw = Math.min(video.videoWidth - sx, sw);
+          sh = Math.min(video.videoHeight - sy, sh);
+
+          if (sw > 40 && sh > 30) {
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = sw;
+            cropCanvas.height = sh;
+            const cropCtx = cropCanvas.getContext('2d');
+            cropCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+            ocrInputBase64 = cropCanvas.toDataURL('image/jpeg', 0.95);
+          }
+        } catch (e) {
+          console.warn('Crop error fallback to full image:', e);
+        }
+      }
 
       closeLiveCamera();
 
@@ -855,19 +895,21 @@
       showToast('กำลังวิเคราะห์ตัวเลขจากภาพที่ถ่าย...', 'info');
 
       try {
-        const processed = await compressAndPrepareImage(rawBase64, isDecimal);
-        imagesState[type] = processed.previewBase64;
+        const processedFull = await compressAndPrepareImage(rawBase64, isDecimal);
+        imagesState[type] = processedFull.previewBase64;
 
         const previewBox = document.getElementById(`previewBox${capitalize(type)}`);
         const previewImg = document.getElementById(`imgPreview${capitalize(type)}`);
         const labelEl    = document.getElementById(`label${capitalize(type)}`);
 
-        if (previewImg) previewImg.src = processed.previewBase64;
+        if (previewImg) previewImg.src = processedFull.previewBase64;
         if (previewBox) previewBox.classList.remove('hidden');
         if (labelEl) labelEl.textContent = '📁 เปลี่ยนรูป';
         lucide.createIcons();
 
-        await runOcrOnBase64(processed.ocrBase64, targetInputId, isDecimal);
+        // ส่งภาพบริเวณกรอบเล็งเข้าประมวลผล OCR
+        const processedOcr = await compressAndPrepareImage(ocrInputBase64, isDecimal);
+        await runOcrOnBase64(processedOcr.ocrBase64, targetInputId, isDecimal, processedFull.ocrBase64);
       } catch (err) {
         console.error('Error processing captured photo:', err);
         showToast('ประมวลผลรูปถ่ายไม่สำเร็จ กรุณากรอกตัวเลขด้วยตนเอง', 'error');
@@ -878,7 +920,7 @@
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
-      showToast('กำลังโหลดและบีบอัดรูปภาพด้วย Canvas...', 'info');
+      showToast('กำลังโหลดและประมวลผลรูปภาพ...', 'info');
 
       try {
         const rawBase64 = await readFileAsDataURL(file);
@@ -920,15 +962,15 @@
               }
             }
 
-            // Canvas 1: ภาพสีสำหรับพรีวิวและส่งขึ้น Google Drive
+            // Canvas 1: ภาพสีต้นฉบับสำหรับแสดง Preview และอัปโหลดขึ้นคลาวด์
             const canvasPreview = document.createElement('canvas');
             canvasPreview.width = width;
             canvasPreview.height = height;
             const ctxPreview = canvasPreview.getContext('2d');
             ctxPreview.drawImage(img, 0, 0, width, height);
-            const previewBase64 = canvasPreview.toDataURL('image/jpeg', 0.75);
+            const previewBase64 = canvasPreview.toDataURL('image/jpeg', 0.85);
 
-            // Canvas 2: ภาพ Grayscale เพิ่มความคมชัด (ไม่ตัดขาว-ดำแข็ง เพื่อไม่ให้ตัวเลขจมหาย)
+            // Canvas 2: ภาพ Grayscale เพิ่ม Contrast สำหรับส่งให้ AI OCR
             const canvasOcr = document.createElement('canvas');
             canvasOcr.width = width;
             canvasOcr.height = height;
@@ -938,30 +980,25 @@
             const imgData = ctxOcr.getImageData(0, 0, width, height);
             const d = imgData.data;
 
-            let minB = 255, maxB = 0, sumB = 0;
+            let minB = 255, maxB = 0;
             for (let i = 0; i < d.length; i += 4) {
               const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
               if (gray < minB) minB = gray;
               if (gray > maxB) maxB = gray;
-              sumB += gray;
             }
             const range = maxB - minB || 1;
-            const avgB = sumB / (d.length / 4);
-            // ถ้าเป็นหน้าปัดมืด ตัวเลขสว่าง ให้กลับสีเป็นตัวเลขเข้มบนพื้นสว่าง
-            const isDarkCluster = !isReceipt && (avgB < 110);
 
+            // ปรับ Dynamic Range ขยาย Contrast ให้ตัวเลขสีดำบนลูกกลิ้งสีขาวเด่นชัด ไม่ตัดทอนเส้นตัวเลข
             for (let i = 0; i < d.length; i += 4) {
               const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-              let stretched = Math.round(((gray - minB) / range) * 255);
-              if (isDarkCluster) stretched = 255 - stretched;
-              // เพิ่ม Contrast แบบนุ่มนวล
-              const contrasted = Math.max(0, Math.min(255, Math.round((stretched - 128) * 1.4 + 128)));
+              const stretched = Math.round(((gray - minB) / range) * 255);
+              const contrasted = Math.max(0, Math.min(255, Math.round((stretched - 128) * 1.5 + 128)));
               d[i] = d[i + 1] = d[i + 2] = contrasted;
               d[i + 3] = 255;
             }
             ctxOcr.putImageData(imgData, 0, 0);
 
-            const ocrBase64 = canvasOcr.toDataURL('image/jpeg', 0.9);
+            const ocrBase64 = canvasOcr.toDataURL('image/jpeg', 0.95);
             resolve({ previewBase64, ocrBase64 });
           } catch (e) {
             reject(e);
@@ -981,30 +1018,48 @@
       });
     }
 
-    async function runOcrOnBase64(base64, targetInputId, isDecimal = false) {
-      showOcrLoading(true, 'กำลังโหลดระบบอ่านตัวเลข...');
+    async function runOcrOnBase64(base64, targetInputId, isDecimal = false, fallbackBase64 = null) {
+      showOcrLoading(true, 'กำลังโหลดระบบอ่านตัวเลข AI...');
       let worker = null;
       try {
         worker = await Tesseract.createWorker('eng', 1, {
           logger: (m) => {
             if (m.status === 'recognizing text') {
               const pct = Math.round((m.progress || 0) * 100);
-              updateOcrProgress(pct, `กำลังอ่านตัวเลข... ${pct}%`);
+              updateOcrProgress(pct, `กำลังวิเคราะห์ตัวเลข... ${pct}%`);
             } else {
               updateOcrProgress(30, 'กำลังเตรียมวิเคราะห์ภาพ...');
             }
           }
         });
 
-        // บังคับให้อ่านเฉพาะตัวเลข และรองรับตัวเลขที่กระจายอยู่บนหน้าปัด/บิล
+        // กำหนด Whitelist รวมช่องว่าง (Space) เพื่อให้อ่านตัวเลขไมล์ลูกกลิ้งที่เว้นระยะได้แม่นยำ
+        // ใช้ PSM 6 (Single Uniform Block) เหมาะสำหรับแถวตัวเลขไมล์
         await worker.setParameters({
-          tessedit_char_whitelist: isDecimal ? '0123456789.,' : '0123456789',
-          tessedit_pageseg_mode: '11'
+          tessedit_char_whitelist: isDecimal ? '0123456789., ' : '0123456789 ',
+          tessedit_pageseg_mode: '6'
         });
 
-        const result = await worker.recognize(base64);
-        const recognizedText = result.data.text || '';
-        const extractedNumber = extractNumberFromText(recognizedText, isDecimal);
+        let result = await worker.recognize(base64);
+        let recognizedText = result.data.text || '';
+        let extractedNumber = extractNumberFromText(recognizedText, isDecimal);
+
+        // หาก PSM 6 ยังไม่พบตัวเลข ให้ลองสแกนด้วย PSM 11 สำรอง
+        if (extractedNumber === null) {
+          await worker.setParameters({ tessedit_pageseg_mode: '11' });
+          result = await worker.recognize(base64);
+          recognizedText = result.data.text || '';
+          extractedNumber = extractNumberFromText(recognizedText, isDecimal);
+        }
+
+        // หากยังไม่พบ และมี fallbackBase64 (ภาพเต็ม) ให้ลองสแกนภาพเต็ม
+        if (extractedNumber === null && fallbackBase64) {
+          await worker.setParameters({ tessedit_pageseg_mode: '11' });
+          result = await worker.recognize(fallbackBase64);
+          recognizedText = result.data.text || '';
+          extractedNumber = extractNumberFromText(recognizedText, isDecimal);
+        }
+
         showOcrLoading(false);
 
         if (extractedNumber !== null) {
@@ -1030,23 +1085,71 @@
 
     function extractNumberFromText(text, isDecimal = false) {
       if (!text) return null;
-      const cleanText = text.replace(/,/g, '');
 
+      // 1. กรณีเป็นค่าน้ำมัน (ทศนิยม)
       if (isDecimal) {
+        const cleanText = text.replace(/,/g, '');
         const matches = cleanText.match(/\d+(?:\.\d{1,2})?/g);
         if (!matches || matches.length === 0) return null;
         const validNumbers = matches.map(Number).filter(n => n > 0 && n < 50000);
         return validNumbers.length > 0 ? validNumbers[validNumbers.length - 1] : null;
-      } else {
-        const longMatches = cleanText.match(/\d{4,7}/g);
-        if (longMatches && longMatches.length > 0) {
-          return parseInt(longMatches[0], 10);
-        }
-        const anyMatches = cleanText.match(/\d+/g);
-        if (!anyMatches || anyMatches.length === 0) return null;
-        anyMatches.sort((a, b) => b.length - a.length);
-        return parseInt(anyMatches[0], 10);
       }
+
+      // 2. กรณีเป็นเลขไมล์รถ (Odometer):
+      // กำจัดเครื่องหมายจุลภาค เช่น 39,463 -> 39463
+      const clean = text.replace(/,/g, '');
+      const candidates = [];
+      const lines = clean.split(/[\r\n]+/);
+
+      for (let rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        // แบบ A: ตัวเลขที่มีการเว้นวรรค เช่น '0 3 9 4 6 3' หรือ '3 9 4 6 3' (ไมล์ลูกกลิ้ง Isuzu)
+        const mSpaced = line.match(/(?:\d\s+){3,6}\d/g) || [];
+        for (const m of mSpaced) {
+          const d = m.replace(/\s+/g, '');
+          if (d.length >= 4 && d.length <= 7) {
+            candidates.push(parseInt(d, 10));
+          }
+        }
+
+        // แบบ B: ตัวเลขติดกัน 4-7 หลัก เช่น '039463', '39463'
+        const mCont = line.match(/\d{4,7}/g) || [];
+        for (const m of mCont) {
+          candidates.push(parseInt(m, 10));
+        }
+
+        // แบบ C: บรรทัดที่ส่วนใหญ่เป็นตัวเลขไมล์
+        const digitsOnly = line.replace(/[^0-9]/g, '');
+        if (digitsOnly.length >= 4 && digitsOnly.length <= 7) {
+          candidates.push(parseInt(digitsOnly, 10));
+        }
+      }
+
+      // กำจัดค่าซ้ำ
+      const unique = Array.from(new Set(candidates));
+
+      // กรองเฉพาะค่าที่เป็นเลขไมล์รถยนต์จริง (500 ถึง 999,999 กม.)
+      // ป้องกันไม่ให้เอาเศษตัวเลขอย่าง 77 หรือตัวเลขบนหน้าปัดความเร็ว (100, 120, 140) มาใส่
+      const validOdo = unique.filter(n => n >= 500 && n <= 999999);
+      if (validOdo.length > 0) {
+        // ให้ความสำคัญสูงสุดกับเลขไมล์ 5-6 หลัก (10,000 - 999,999 กม.)
+        validOdo.sort((a, b) => {
+          const aRank = (a >= 10000 && a <= 999999) ? 2 : 1;
+          const bRank = (b >= 10000 && b <= 999999) ? 2 : 1;
+          if (aRank !== bRank) return bRank - aRank;
+          return b - a;
+        });
+        return validOdo[0];
+      }
+
+      if (unique.length > 0) {
+        unique.sort((a, b) => b - a);
+        return unique[0];
+      }
+
+      return null;
     }
 
     function showOcrLoading(show, status = '') {
