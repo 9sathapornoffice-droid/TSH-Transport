@@ -1,13 +1,15 @@
-
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>บันทึกการเดินทาง</title>
+  <title>บันทึกการเดินทาง - TSH Transport</title>
   <meta name="theme-color" content="#1e3a8a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" type="image/jpeg" href="tsh-mascot.jpg">
+  <link rel="apple-touch-icon" href="tsh-mascot.jpg">
+  <link rel="manifest" href="manifest.json">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -442,7 +444,7 @@
           </div>
 
           <div class="relative">
-            <input type="number" id="inputFuelCost" min="0" step="0.01" placeholder="0.00 (แก้ไขด้วยมือได้ตลอดเวลา)" class="w-full pl-3 pr-12 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800 focus:border-red-500 outline-none">
+            <input type="number" id="inputFuelCost" min="0" step="0.01" oninput="validateReturnOdoLive()" placeholder="0.00 (แก้ไขด้วยมือได้ตลอดเวลา)" class="w-full pl-3 pr-12 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800 focus:border-red-500 outline-none">
             <span class="absolute right-3 top-2 text-xs text-slate-400">บาท</span>
           </div>
         </div>
@@ -492,10 +494,14 @@
           </div>
         </div>
 
-        <div id="finalSummaryBox" class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
+        <div id="finalSummaryBox" class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs space-y-1.5">
           <div class="flex justify-between">
             <span class="text-slate-500">ระยะทางรวมทั้งทริป:</span>
             <span id="summaryTotalDistance" class="font-bold text-blue-900 text-sm">0 กม.</span>
+          </div>
+          <div id="summaryFuelBox" class="flex justify-between hidden">
+            <span class="text-slate-500">อัตราค่าน้ำมันเฉลี่ย:</span>
+            <span id="summaryFuelRate" class="font-semibold text-emerald-700 text-xs">-</span>
           </div>
           <div class="flex justify-between">
             <span class="text-slate-500">สถานะหลังบันทึก:</span>
@@ -522,6 +528,9 @@
         <span id="cameraModalTitle" class="font-bold text-sm text-white">เปิดกล้องถ่ายรูป</span>
       </div>
       <div class="flex items-center space-x-2">
+        <button type="button" id="btnToggleTorch" onclick="toggleTorch()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 transition border border-slate-700 hidden" title="เปิด/ปิดไฟฉาย">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+        </button>
         <button type="button" onclick="switchCameraFacing()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 transition border border-slate-700" title="สลับกล้องหน้า/หลัง">
           <i data-lucide="refresh-cw" class="w-4 h-4"></i>
         </button>
@@ -587,6 +596,34 @@
     </div>
   </div>
 
+  <!-- ================= MODAL: ADMIN UNLOCK ================= -->
+  <div id="modalAdminUnlock" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 select-none">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 space-y-4 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+          <i data-lucide="lock" class="w-4 h-4 text-red-600"></i>
+          ปลดล็อกสิทธิ์ Admin
+        </h3>
+        <button onclick="closeAdminUnlockModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-xs font-medium text-slate-600">กรอกรหัสผ่านผู้ดูแลระบบ:</label>
+        <input type="password" id="inputAdminPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter') confirmAdminUnlock()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center font-bold tracking-widest text-slate-800 focus:bg-white focus:border-red-500 outline-none">
+        <p class="text-[10px] text-slate-400 text-center">ใช้สำหรับแก้ไขข้อมูลขาไปหลังออกเดินทางแล้ว</p>
+      </div>
+      <div class="flex space-x-2 pt-1">
+        <button onclick="confirmAdminUnlock()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition active:scale-95">
+          ยืนยันปลดล็อก
+        </button>
+        <button onclick="closeAdminUnlockModal()" class="px-3.5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-xs hover:bg-slate-50 transition">
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= JAVASCRIPT LOGIC ================= -->
   <script>
     // =========================================================================
@@ -612,13 +649,13 @@
       returnPhoto: null
     };
 
-    // ล้าง Service Worker เก่าออกอัตโนมัติ (สำหรับเครื่องที่เคยเปิดเวอร์ชัน PWA ก่อนหน้า)
+    // ลงทะเบียน Service Worker สำหรับการทำงานแบบ PWA ออฟไลน์
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) {
-          registration.unregister();
-        }
-      }).catch(() => {});
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => reg.update())
+          .catch((err) => console.log('SW registration notice:', err));
+      });
     }
 
     function checkInAppBrowser() {
@@ -706,15 +743,28 @@
 
     function promptAdminUnlock() {
       if (isAdminUnlocked) {
-        showToast('ข้อมูลอยู่ในสถานะปลดล็อกเรียบร้อยแล้ว', 'info');
+        showToast('ข้อมูลอยู่ในสถานะปลดล็อกเรียบรรือยแล้ว', 'info');
         return;
       }
+      const modal = document.getElementById('modalAdminUnlock');
+      const input = document.getElementById('inputAdminPassword');
+      if (input) input.value = '';
+      if (modal) modal.classList.remove('hidden');
+      setTimeout(() => { if (input) input.focus(); }, 120);
+    }
 
-      const inputPwd = prompt('🔒 ปลดล็อกข้อมูลผู้ดูแลระบบ (Admin Mode):\nกรุณากรอกรหัสผ่านเพื่อแก้ไขข้อมูลขาไป:');
-      if (inputPwd === null) return;
+    function closeAdminUnlockModal() {
+      const modal = document.getElementById('modalAdminUnlock');
+      if (modal) modal.classList.add('hidden');
+    }
 
-      if (inputPwd.trim() === ADMIN_PASSWORD) {
+    function confirmAdminUnlock() {
+      const input = document.getElementById('inputAdminPassword');
+      const inputPwd = input ? input.value.trim() : '';
+
+      if (inputPwd === ADMIN_PASSWORD) {
         isAdminUnlocked = true;
+        closeAdminUnlockModal();
 
         const fields = ['roDriver', 'roPlate', 'roDate', 'roDepartTime', 'roDestination', 'roStartOdo'];
         fields.forEach(id => {
@@ -738,6 +788,10 @@
         showToast('ยืนยันรหัสผ่านถูกต้อง ปลดล็อกฟิลด์ขาไปแล้ว', 'success');
       } else {
         showToast('รหัสผ่านไม่ถูกต้อง ไม่สามารถปลดล็อกได้', 'error');
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
       }
     }
 
@@ -762,11 +816,41 @@
 
     let currentCameraStream = null;
     let currentCameraFacing = 'environment';
+    let isTorchOn = false;
     let activeCameraContext = {
       type: null,
       targetInputId: null,
       isDecimal: false
     };
+
+    function updateTorchButtonUI(on) {
+      const btn = document.getElementById('btnToggleTorch');
+      if (!btn) return;
+      if (on) {
+        btn.className = 'p-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white transition border border-amber-400 shadow-md';
+        btn.innerHTML = '<i data-lucide="zap-off" class="w-4 h-4"></i>';
+      } else {
+        btn.className = 'p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 transition border border-slate-700';
+        btn.innerHTML = '<i data-lucide="zap" class="w-4 h-4"></i>';
+      }
+      lucide.createIcons();
+    }
+
+    async function toggleTorch() {
+      if (!currentCameraStream) return;
+      const track = currentCameraStream.getVideoTracks()[0];
+      if (!track) return;
+      try {
+        isTorchOn = !isTorchOn;
+        await track.applyConstraints({
+          advanced: [{ torch: isTorchOn }]
+        });
+        updateTorchButtonUI(isTorchOn);
+      } catch (err) {
+        console.warn('Torch toggle failed:', err);
+        showToast('อุปกรณ์ไม่รองรับการเปิดไฟฉายผ่านเบราว์เซอร์', 'info');
+      }
+    }
 
     async function openLiveCamera(type, targetInputId, isDecimal = false) {
       activeCameraContext = { type, targetInputId, isDecimal };
@@ -783,6 +867,21 @@
       lucide.createIcons();
 
       await startCameraStream();
+    }
+
+    function checkTorchCapability() {
+      const btnTorch = document.getElementById('btnToggleTorch');
+      isTorchOn = false;
+      if (btnTorch) {
+        const track = currentCameraStream ? currentCameraStream.getVideoTracks()[0] : null;
+        const caps = (track && typeof track.getCapabilities === 'function') ? track.getCapabilities() : null;
+        if (caps && caps.torch) {
+          btnTorch.classList.remove('hidden');
+          updateTorchButtonUI(false);
+        } else {
+          btnTorch.classList.add('hidden');
+        }
+      }
     }
 
     async function startCameraStream() {
@@ -805,12 +904,14 @@
         currentCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = currentCameraStream;
         await video.play();
+        checkTorchCapability();
       } catch (err) {
         console.warn('getUserMedia error with facingMode, falling back:', err);
         try {
           currentCameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           video.srcObject = currentCameraStream;
           await video.play();
+          checkTorchCapability();
         } catch (err2) {
           console.error('Camera access failed:', err2);
           closeLiveCamera();
@@ -828,9 +929,18 @@
 
     function closeLiveCamera() {
       if (currentCameraStream) {
+        if (isTorchOn) {
+          const track = currentCameraStream.getVideoTracks()[0];
+          if (track) {
+            try { track.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) {}
+          }
+          isTorchOn = false;
+        }
         currentCameraStream.getTracks().forEach(track => track.stop());
         currentCameraStream = null;
       }
+      const btnTorch = document.getElementById('btnToggleTorch');
+      if (btnTorch) btnTorch.classList.add('hidden');
       const modal = document.getElementById('modalCamera');
       if (modal) modal.classList.add('hidden');
     }
@@ -840,6 +950,10 @@
       if (!video || !video.videoWidth) {
         showToast('กล้องยังไม่พร้อมใช้งาน', 'error');
         return;
+      }
+
+      if (navigator.vibrate) {
+        try { navigator.vibrate(60); } catch (e) {}
       }
 
       // 1. ภาพเต็มความละเอียดสำหรับบันทึกและอัปโหลดขึ้น Google Drive
@@ -1403,6 +1517,8 @@
       const returnInput = document.getElementById('inputReturnOdo');
       const hint = document.getElementById('liveOdoHint');
       const summaryDistance = document.getElementById('summaryTotalDistance');
+      const fuelBox = document.getElementById('summaryFuelBox');
+      const fuelRate = document.getElementById('summaryFuelRate');
 
       const returnVal = parseFloat(returnInput.value);
 
@@ -1410,6 +1526,7 @@
         hint.textContent = `(เลขไมล์ขาไปคือ ${currentStartOdo.toLocaleString()} กม.)`;
         hint.className = 'text-[11px] font-medium text-slate-500';
         summaryDistance.textContent = '0 กม.';
+        if (fuelBox) fuelBox.classList.add('hidden');
         return;
       }
 
@@ -1418,10 +1535,22 @@
         hint.textContent = `⚠️ เลขไมล์ขากลับต้องไม่น้อยกว่าขาไป (${currentStartOdo.toLocaleString()} กม.)`;
         hint.className = 'text-[11px] font-bold text-red-600';
         summaryDistance.textContent = 'เลขไมล์ไม่ถูกต้อง';
+        if (fuelBox) fuelBox.classList.add('hidden');
       } else {
         hint.textContent = `✓ ระยะทางขาไปถึงกลับ: +${diff.toLocaleString()} กม.`;
         hint.className = 'text-[11px] font-semibold text-blue-700';
         summaryDistance.textContent = `${diff.toLocaleString()} กม.`;
+
+        const fuelCost = parseFloat(document.getElementById('inputFuelCost').value);
+        if (diff > 0 && !isNaN(fuelCost) && fuelCost > 0) {
+          const rate = (fuelCost / diff).toFixed(2);
+          if (fuelBox && fuelRate) {
+            fuelRate.textContent = `${rate} บาท/กม. (ค่าน้ำมัน ${fuelCost.toLocaleString()} บาท)`;
+            fuelBox.classList.remove('hidden');
+          }
+        } else if (fuelBox) {
+          fuelBox.classList.add('hidden');
+        }
       }
     }
 
