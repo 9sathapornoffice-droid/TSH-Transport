@@ -70,3 +70,8 @@ transport-data-entry/
 2. ไปที่เมนู **ส่วนขยาย (Extensions) > Apps Script**
 3. คัดลอกโค้ดจากไฟล์ `google-sheets-script.js` ไปวางแล้วกดบันทึก
 4. กดรันฟังก์ชัน `setupTransportSheet` เพียง 1 ครั้งเพื่อสร้างหัวตาราง
+
+---
+
+**Developed by Sathaporn Marketing**  
+**ISUZU TANG SIA HUAT NAKHON PATHOM**
